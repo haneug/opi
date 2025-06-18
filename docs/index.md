@@ -27,10 +27,10 @@ regarding individual and known issues with ORCA itself.
 ::::
 ::::{grid} 3
 :::{grid-item-card}
-[![examples](img/assets/opi_notebooks.svg)](https://www.faccts.de/docs/orca/6.1/manual/)
+[![examples](img/assets/opi_notebooks.svg)](https://www.faccts.de/docs/opi/1.0/docs/contents/notebooks/how_to_opi.html)
 :::
 :::{grid-item-card}
-[![pypi](img/assets/opi_pypi.svg)](https://pypi.org/project/orca-pi//)
+[![pypi](img/assets/opi_pypi.svg)](https://pypi.org/project/orca-pi/)
 :::
 :::{grid-item-card}
 [![github](img/assets/opi_github.svg)](https://github.com/faccts/opi)
