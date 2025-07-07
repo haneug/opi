@@ -87,7 +87,7 @@ class Runner:
     """
     Main class that facilities execution of ORCA binaries.
     Makes sure that correct ORCA binary and MPI libraries are used.
-    This class should be to used to execute any ORCA binary.
+    This class should be used to execute any ORCA binary.
     """
 
     def __init__(self, working_dir: Path | str | os.PathLike[str] | None = None) -> None:

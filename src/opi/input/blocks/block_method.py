@@ -15,6 +15,9 @@ class BlockMethod(Block):
     d3a1: float | None = None
     d3s8: float | None = None
     d3a2: float | None = None
+    rangesepexx: bool | None = None
+    rangesepmu: float | None = None
+    rangesepscal: float | None = None
 
     # > Options for Extopt
     ProgExt: InputFilePath | None = None  # Path to wrapper script
