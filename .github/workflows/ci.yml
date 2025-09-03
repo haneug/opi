@@ -1,0 +1,40 @@
+name: CI (uv + nox)
+
+on:
+  workflow_dispatch:  # manual "Run workflow" button so you can test safely
+
+jobs:
+  nox:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]  # adjust as needed
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      # Optional but recommended: cache uv’s build/download cache
+      - name: Cache uv cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Run Nox sessions via uv
+        run: |
+          uv run nox
+
