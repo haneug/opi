@@ -37,28 +37,21 @@ Tests are run via **nox**. A typical invocation is:
 
 ### Default behavior (`-s tests`)
 
+this executes all tests.
+
 Running
 
-    uv run nox -s tests
+    uv run nox -s unit_tests
 
-executes only tests that **do not require ORCA**.
-
-In particular, these are the unit tests.
+Will execute only the unit tests.
 This is the mode used in CI.
 
 ------------------------------------------------------------------------
 
-## Running ORCA / example tests explicitly
+## ORCA example tests
 
-Tests that require ORCA must be requested explicitly using pytest
-markers.
-
-Examples:
-
-    uv run nox -s tests -- -m examples
-
-These tests require a working local ORCA installation and will not run
-in CI.
+Tests that require a local ORCA installation marked by `orca` are run 
+with the default session `tests`
 
 ------------------------------------------------------------------------
 
@@ -76,7 +69,7 @@ and
 
 To update these JSON fixtures, run:
 
-    uv run nox -s tests -- -m json_files --update-json-files
+    uv run nox -s json_gen
 
 This will:
 
@@ -144,5 +137,4 @@ Markers can be combined using standard pytest syntax, for example:
 
 -   CI runs unit tests only
 -   CI does not run ORCA
--   ORCA and example tests are opt-in
 -   JSON fixtures ensure output parsing is fully tested in CI
