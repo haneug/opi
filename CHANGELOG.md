@@ -17,7 +17,7 @@
   - `from_ase()` : from Atoms object of ASE
   - `from_list()`: from a list
   - `from_xyz_block()`: to directly read XYZ string
-  - `from_trj_xyz()`: reads multi-XYZ files and returns list of Structure objects.(#138)
+  - `from_trj_xyz()`: reads multi-XYZ files and returns list of Structure objects. #138
 - Added property `Structure.nelectrons` to count number of electrons. #117
 - Added `UserWarning` for if multiplicity in `Structure` and number of electrons are invalid. #127
 - Added `Structure.set_ls_multiplicity()` which set the low-spin multiplicity on the `Structure`. #127
