@@ -2094,7 +2094,6 @@ class Output:
                 self.config_dict["FockMatrix"].append("F")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        # > get hcore from gbw json files
         fock_list = self._safe_get("results_gbw", gbw_index, "molecule", "f_matrix")
 
         if fock_list is not None:
@@ -2126,7 +2125,6 @@ class Output:
                 self.config_dict["FockMatrix"].append("J")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        # > get hcore from gbw json files
         j_list = self._safe_get("results_gbw", gbw_index, "molecule", "j_matrix")
 
         if j_list is not None:
@@ -2158,11 +2156,41 @@ class Output:
                 self.config_dict["FockMatrix"].append("K")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        # > get hcore from gbw json files
         k_list = self._safe_get("results_gbw", gbw_index, "molecule", "k_matrix")
 
         if k_list is not None:
             return np.array(k_list[0])
+        else:
+            return None
+
+    def get_scf_density(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the SCF density matrix.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request K to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+        """
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            if "Densities" not in self.config_dict:
+                self.config_dict["Densities"] = []
+            self.config_dict["Densities"].append("scfp")
+            if "scfp" not in self.config_dict["Densities"]:
+                self.config_dict["Densities"].append("scfp")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        scfp_list = self._safe_get("results_gbw", gbw_index, "molecule", "densities", "scfp")
+
+        if scfp_list is not None:
+            return np.array(scfp_list)
         else:
             return None
 
