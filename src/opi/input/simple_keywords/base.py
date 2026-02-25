@@ -1,7 +1,26 @@
 __all__ = ("SimpleKeyword",)
 
+_SIMPLE_KEYWORD_REGISTRY = []
 
 class SimpleKeywordBox:
+    _registry = []
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls._registry.append(cls)
+
+    @classmethod
+    def from_string(cls, s):
+        norm = s.lower()
+        for c in cls._registry:
+            for attr, value in vars(c).items():
+                if isinstance(value, SimpleKeyword) and value.keyword.lower() == norm:
+                    return value
+
+        raise ValueError(f"Keyword {s} not found.")
+
+
+class Method(SimpleKeywordBox):
     pass
 
 
