@@ -7,7 +7,15 @@ class SimpleKeywordBox:
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        cls._registry.append(cls)
+        cls._registry = []
+
+        for base in cls.__bases__:
+            if hasattr(base, "_registry"):
+                base._registry.append(cls)
+
+    @classmethod
+    def registry(cls):
+        return cls._registry
 
     @classmethod
     def from_string(cls, s):
