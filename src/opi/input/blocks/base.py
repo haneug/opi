@@ -189,3 +189,14 @@ class Block(BaseModel, ABC):
             return InputFilePath(file=inp)
         else:
             return inp
+
+    @classmethod
+    def get_subclass_by_name(cls, name: str) -> type["Block"]:
+        matches = {
+            sub.__name__.lower(): sub
+            for sub in cls.__subclasses__()
+        }
+        match = matches.get(name.lower())
+        if match is None:
+            raise ValueError(f"No Block subclass found with name {name!r}. Available: {list(matches.keys())}")
+        return match

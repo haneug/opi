@@ -1,11 +1,9 @@
 __all__ = ("SimpleKeyword",)
 
-_SIMPLE_KEYWORD_REGISTRY = []
-
 class SimpleKeywordBox:
-    _registry = []
+    _registry: list[type["SimpleKeywordBox"]] = []
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         cls._registry = []
 
@@ -13,8 +11,10 @@ class SimpleKeywordBox:
             if hasattr(base, "_registry"):
                 base._registry.append(cls)
 
+        cls._registry.append(cls)
+
     @classmethod
-    def registry(cls):
+    def registry(cls) -> list:
         return cls._registry
 
     @classmethod
@@ -26,6 +26,15 @@ class SimpleKeywordBox:
                     return value
 
         raise ValueError(f"Keyword {s} not found.")
+
+
+    @classmethod
+    def find_keyword(cls, inp: "SimpleKeyword | str") -> "SimpleKeyword":
+        if isinstance(inp, SimpleKeyword):
+            inp = inp.keyword
+
+        return cls.from_string(inp)
+
 
 
 class Method(SimpleKeywordBox):
