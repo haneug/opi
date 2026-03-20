@@ -120,6 +120,10 @@ class EnGradCompleted(TaskCompleted):
     calculator : ~opi.core.Calculator
         The calculator used to run this job.
     """
+    @property
+    def status(self) -> bool:
+        out = self.get_output()
+        return out.terminated_normally() and out.scf_converged()
 
     @property
     def primary_property(self) -> tuple[float, tuple[float, ...]]:
