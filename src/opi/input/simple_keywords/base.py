@@ -1,9 +1,13 @@
+from __future__ import annotations
+
+from typing import Any
+
 __all__ = ("SimpleKeyword",)
 
 class SimpleKeywordBox:
     _registry: list[type["SimpleKeywordBox"]] = []
 
-    def __init_subclass__(cls, **kwargs) -> None:
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         cls._registry = []
 
@@ -14,11 +18,11 @@ class SimpleKeywordBox:
         cls._registry.append(cls)
 
     @classmethod
-    def registry(cls) -> list:
+    def registry(cls) -> list[type["SimpleKeywordBox"]]:
         return cls._registry
 
     @classmethod
-    def from_string(cls, s):
+    def from_string(cls, s: str) -> "SimpleKeyword":
         norm = s.lower()
         for c in cls._registry:
             for attr, value in vars(c).items():

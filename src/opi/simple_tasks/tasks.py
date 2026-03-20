@@ -71,7 +71,7 @@ class SinglePointTask(Task):
         """
         return SinglePointCompleted(calculator)
 
-    def run(  # type: ignore[override]
+    def run(
         self,
         basename: str,
         structure: Structure,
@@ -167,7 +167,7 @@ class OptTask(Task):
         """
         return OptCompleted(calculator)
 
-    def run(  # type: ignore[override]
+    def run(
         self,
         basename: str,
         structure: Structure,
@@ -262,7 +262,7 @@ class EnGradTask(Task):
         """
         return EnGradCompleted(calculator)
 
-    def run(  # type: ignore[override]
+    def run(
         self,
         basename: str,
         structure: Structure,

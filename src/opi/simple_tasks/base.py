@@ -12,6 +12,7 @@ import typing
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -80,7 +81,7 @@ class TaskParams(BaseModel):
                     block_type = Block.get_subclass_by_name(validator)
                     block_class = block_type(**{key: value})
 
-                    block_exists, *_ = input_object.has_blocks(block_type)
+                    block_exists, *_ = input_object.has_blocks(block_class)
                     if not block_exists:
                         input_object.add_blocks(block_class)
                     else:
@@ -96,7 +97,7 @@ class TaskParams(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate(cls, data: dict) -> dict:  # type: ignore[override]
+    def validate(cls, data: dict[str, Any]) -> dict[str, Any]:  # type: ignore[override]
         """Resolve raw strings to keyword / block-attribute objects.
 
         Parameters
@@ -481,7 +482,7 @@ class TaskCompleted(ABC):
 
     @property
     @abstractmethod
-    def primary_property(self):
+    def primary_property(self) -> Any:
         """The main chemical result of the task.
 
         The concrete type and semantics are defined by each subclass.
