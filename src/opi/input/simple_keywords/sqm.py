@@ -1,12 +1,10 @@
-from opi.input.simple_keywords.base import (
-    SimpleKeyword,
-    SimpleKeywordBox,
-)
+from opi.input.simple_keywords.base import SimpleKeyword
+from opi.input.simple_keywords.method import Method
 
 __all__ = ("Sqm",)
 
 
-class Sqm(SimpleKeywordBox):
+class Sqm(Method):
     """Enum to store all simple keywords of type Sqm."""
 
     AM1 = SimpleKeyword("am1")
