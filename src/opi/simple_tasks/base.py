@@ -443,6 +443,11 @@ class Task(ABC):
 class TaskCompleted(ABC):
     """Abstract base class for task results.
 
+    On construction the job status is checked immediately (via the plain text
+    output file, no JSON required).  If the job succeeded, ``Output.parse()``
+    is called automatically so that all property accessors — including
+    :attr:`primary_property` — are ready to use without any extra setup.
+
     Parameters
     ----------
     calculator : Calculator
@@ -453,10 +458,16 @@ class TaskCompleted(ABC):
     ----------
     calculator : Calculator
         See *calculator* parameter.
+    output : Output
+        The parsed output object.  Available immediately after construction
+        if the job succeeded; contains unparsed data if the job failed.
     """
 
     def __init__(self, calculator: Calculator) -> None:
         self.calculator: Calculator = calculator
+        self.output: Output = calculator.get_output()
+        if self.status:
+            self.output.parse()
 
     # ------------------------------------------------------------------
     # Status
@@ -497,12 +508,14 @@ class TaskCompleted(ABC):
     # ------------------------------------------------------------------
 
     def get_output(self) -> Output:
-        """Return an :class:`~opi.output.core.Output` for this job.
+        """Return the :class:`~opi.output.core.Output` for this job.
 
-        This is the primary escape hatch to the full ORCA output.
+        Returns the same instance created at construction time.  If the job
+        succeeded, this object is already parsed and all property accessors
+        are populated.
 
         Returns
         -------
         Output
         """
-        return self.calculator.get_output()
+        return self.output
