@@ -12,6 +12,7 @@ class; the subclasses here only add the ORCA task keyword to the
 from __future__ import annotations
 
 from typing import cast
+from pathlib import Path
 
 from opi.core import Calculator
 from opi.input.core import Input
@@ -74,7 +75,7 @@ class SinglePointTask(Task):
         self,
         basename: str,
         structure: Structure,
-        working_dir=None,
+        working_dir: Path | None =None,
         ncores: int | None = None,
         memory_per_core: int | None = None,
         force: bool = False,
@@ -170,7 +171,7 @@ class OptTask(Task):
         self,
         basename: str,
         structure: Structure,
-        working_dir=None,
+        working_dir: Path | None =None,
         ncores: int | None = None,
         memory_per_core: int | None = None,
         force: bool = False,
@@ -265,7 +266,7 @@ class EnGradTask(Task):
         self,
         basename: str,
         structure: Structure,
-        working_dir=None,
+        working_dir: Path | None =None,
         ncores: int | None = None,
         memory_per_core: int | None = None,
         force: bool = False,
