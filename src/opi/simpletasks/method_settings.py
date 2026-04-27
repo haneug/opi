@@ -1,7 +1,7 @@
 import typing
 import warnings
 
-from pydantic import field_validator, model_validator
+from pydantic import ConfigDict, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from opi.input import Input
@@ -23,13 +23,61 @@ from opi.simpletasks.settings import Settings
 
 
 class MethodSettings(Settings):
+    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True, extra="allow")
+
     method: typing.Annotated[SimpleKeyword, Method] | None = None
     basis_set: typing.Annotated[SimpleKeyword, BasisSet] | None = None
     solvation_model: typing.Annotated[SimpleKeyword, SolvationModel] | None = None
     solvent: typing.Annotated[str, Solvent] | None = None
 
+    def __new__(cls, /, **data: typing.Any) -> "MethodSettings":
+        if cls is MethodSettings:
+            method = data.get("method")
+            if method is not None:
+                resolved_cls = cls.resolve_method_settings_type(method)
+                return super().__new__(resolved_cls)
+        return super().__new__(cls)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _check_valid_fields(cls, data: typing.Any) -> typing.Any:
+        if not isinstance(data, dict) or cls is MethodSettings:
+            return data
+        invalid_fields = set(data) - set(cls.model_fields)
+        if invalid_fields:
+            field_word = "field" if len(invalid_fields) == 1 else "fields"
+            raise ValueError(
+                f"Invalid {field_word} for {cls.__name__}: {', '.join(sorted(invalid_fields))}. "
+                f"Valid fields: {', '.join(sorted(cls.model_fields))}"
+            )
+        return data
+
+    @classmethod
+    def resolve_method_settings_type(
+        cls, method: str | SimpleKeyword
+    ) -> typing.Type["MethodSettings"]:
+
+        enum_to_settings = {
+            Dft: DFTSettings,
+            Sqm: SQMSettings,
+            Wft: WftSettings,
+            Method: HFSettings,
+            ForceField: ForceFieldSettings,
+        }
+        for enum_class, settings_type in enum_to_settings.items():
+            try:
+                if enum_class.find_keyword(method):
+                    return typing.cast(typing.Type[MethodSettings], settings_type)
+            except ValueError:
+                pass
+
+        raise ValueError(f"Keyword {method} not found in any of the valid groupings")
+
 
 class DFTSettings(MethodSettings):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True, validate_assignment=True, extra="forbid"
+    )
     _name: str = "dft"
     method: typing.Annotated[SimpleKeyword, Dft] | None = None
     grid: typing.Annotated[SimpleKeyword, Grid] | None = None
@@ -124,20 +172,32 @@ class DFTSettings(MethodSettings):
 
 
 class SQMSettings(MethodSettings):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True, validate_assignment=True, extra="forbid"
+    )
     _name: str = "sqm"
     method: typing.Annotated[SimpleKeyword, Sqm]
 
 
 class WftSettings(MethodSettings):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True, validate_assignment=True, extra="forbid"
+    )
     _name: str = "wft"
     method: typing.Annotated[SimpleKeyword, Wft]
 
 
 class HFSettings(MethodSettings):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True, validate_assignment=True, extra="forbid"
+    )
     _name: str = "hf"
     method: typing.Annotated[SimpleKeyword, Method]
 
 
 class ForceFieldSettings(MethodSettings):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True, validate_assignment=True, extra="forbid"
+    )
     _name: str = "forcefield"
     method: typing.Annotated[SimpleKeyword, ForceField]

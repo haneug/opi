@@ -17,7 +17,7 @@ class SinglePointTask(SimpleTask):
 
     def __init__(
         self,
-        method: str | SimpleKeyword,
+        method: str | SimpleKeyword | None = None,
         basis_set: str | SimpleKeyword | None = None,
         solvation_model: str | SimpleKeyword | None = None,
         solvent: str | Solvent | None = None,

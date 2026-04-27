@@ -7,14 +7,9 @@ from pathlib import Path
 from opi.core import Calculator
 from opi.input import Input
 from opi.input.simple_keywords import (
-    Dft,
-    ForceField,
-    Method,
     SimpleKeyword,
     SimpleKeywordBox,
     Solvent,
-    Sqm,
-    Wft,
 )
 from opi.input.structures import BaseStructureFile, Structure
 from opi.output.core import Output
@@ -32,52 +27,43 @@ class SimpleTask(ABC):
     _task_settings: TaskSettings
     _method_settings: MethodSettings
 
-    @classmethod
-    def resolve_method_settings_type(
-        cls, method: str | SimpleKeyword
-    ) -> typing.Type[MethodSettings]:
-        from opi.simpletasks.method_settings import (
-            DFTSettings,
-            ForceFieldSettings,
-            HFSettings,
-            SQMSettings,
-            WftSettings,
-        )
-
-        enum_to_settings = {
-            Dft: DFTSettings,
-            Sqm: SQMSettings,
-            Wft: WftSettings,
-            Method: HFSettings,
-            ForceField: ForceFieldSettings,
-        }
-        for enum_class, settings_type in enum_to_settings.items():
-            try:
-                if enum_class.find_keyword(method):
-                    return typing.cast(typing.Type[MethodSettings], settings_type)
-            except ValueError:
-                pass
-
-        raise ValueError(f"Keyword {method} not found in any of the valid groupings")
-
     def __init__(
         self,
-        method: str | SimpleKeyword,
+        method: str | SimpleKeyword | None = None,
         basis_set: str | SimpleKeyword | None = None,
         solvation_model: str | SimpleKeyword | None = None,
         solvent: str | Solvent | None = None,
         task_settings: TaskSettings | None = None,
         method_settings: MethodSettings | None = None,
     ):
-        resolved_methods_settings_type = self.resolve_method_settings_type(method)
-        user_method_settings = resolved_methods_settings_type(
-            method=method, basis_set=basis_set, solvation_model=solvation_model, solvent=solvent
-        )
         self._task_settings = task_settings or self._task_settings_type()
-        if method_settings:
-            self._method_settings = method_settings | user_method_settings  # type:ignore
+
+        if method is not None:
+            resolved_type = MethodSettings.resolve_method_settings_type(method)
+            base_data: dict[str, typing.Any] = {
+                k: v
+                for k, v in {
+                    "method": method,
+                    "basis_set": basis_set,
+                    "solvation_model": solvation_model,
+                    "solvent": solvent,
+                }.items()
+                if v is not None
+            }
+            if method_settings is not None:
+                extra: dict[str, typing.Any] = {
+                    **method_settings.model_dump(exclude_unset=True),
+                    **(method_settings.model_extra or {}),
+                }
+                self._method_settings = resolved_type(**{**extra, **base_data})
+            else:
+                self._method_settings = resolved_type(**base_data)
         else:
-            self._method_settings = user_method_settings
+            if method_settings is None:
+                raise ValueError(
+                    "Either 'method' or a 'method_settings' object with a method must be provided"
+                )
+            self._method_settings = method_settings
 
     @property
     def task_settings(self) -> TaskSettings:
