@@ -49,6 +49,11 @@ class SimpleKeywordBox:
         if isinstance(inp, SimpleKeyword):
             inp = inp.keyword
 
+        if not isinstance(inp, str):
+            raise ValueError(
+                f"{cls.__name__} expects a str or SimpleKeyword, got {type(inp).__name__}: {inp!r}"
+            )
+
         return cls.from_string(inp)
 
 

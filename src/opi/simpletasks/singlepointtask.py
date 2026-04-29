@@ -56,7 +56,6 @@ class SinglePointTask(SimpleTask):
 
 class SinglePointResults(TaskResults):
     @property
-    @TaskResults.output_parse
     def final_energy(self) -> float:
         final_energy = self.output.get_final_energy()
 

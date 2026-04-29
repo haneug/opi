@@ -37,7 +37,6 @@ class FreqResults(TaskResults):
         return self.output.terminated_normally()
 
     @cached_property
-    @TaskResults.output_parse
     def free_energy_delta(self) -> float:
         free_energy_delta = self.output.get_free_energy_delta()
 

@@ -1,8 +1,11 @@
 import shutil
 import typing
+import warnings
 from abc import ABC, abstractmethod
-from functools import cached_property, wraps
+from functools import cached_property
 from pathlib import Path
+
+from pydantic import ConfigDict
 
 from opi.core import Calculator
 from opi.input import Input
@@ -18,12 +21,13 @@ from opi.simpletasks.settings import Settings
 
 
 class TaskSettings(Settings):
+    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True, extra="forbid")
     task_keyword: typing.Annotated[SimpleKeyword, SimpleKeywordBox]
 
 
 class SimpleTask(ABC):
     _results_type: type["TaskResults"]
-    _task_settings_type: typing.Callable[[], TaskSettings]
+    _task_settings_type: type[TaskSettings]
     _task_settings: TaskSettings
     _method_settings: MethodSettings
 
@@ -33,10 +37,19 @@ class SimpleTask(ABC):
         basis_set: str | SimpleKeyword | None = None,
         solvation_model: str | SimpleKeyword | None = None,
         solvent: str | Solvent | None = None,
-        task_settings: TaskSettings | None = None,
-        method_settings: MethodSettings | None = None,
+        task_settings: "TaskSettings | dict[str, typing.Any] | None" = None,
+        method_settings: "MethodSettings | dict[str, typing.Any] | None" = None,
     ):
-        self._task_settings = task_settings or self._task_settings_type()
+        if isinstance(task_settings, dict):
+            self._task_settings = self._task_settings_type.model_validate(task_settings)
+        else:
+            self._task_settings = task_settings or self._task_settings_type()  # type: ignore[call-arg]
+
+        resolved_method_settings: MethodSettings | None = (
+            MethodSettings(**method_settings)
+            if isinstance(method_settings, dict)
+            else method_settings
+        )
 
         if method is not None:
             resolved_type = MethodSettings.resolve_method_settings_type(method)
@@ -50,20 +63,20 @@ class SimpleTask(ABC):
                 }.items()
                 if v is not None
             }
-            if method_settings is not None:
+            if resolved_method_settings is not None:
                 extra: dict[str, typing.Any] = {
-                    **method_settings.model_dump(exclude_unset=True),
-                    **(method_settings.model_extra or {}),
+                    **resolved_method_settings.model_dump(exclude_unset=True),
+                    **(resolved_method_settings.model_extra or {}),
                 }
                 self._method_settings = resolved_type(**{**extra, **base_data})
             else:
                 self._method_settings = resolved_type(**base_data)
         else:
-            if method_settings is None:
+            if resolved_method_settings is None:
                 raise ValueError(
                     "Either 'method' or a 'method_settings' object with a method must be provided"
                 )
-            self._method_settings = method_settings
+            self._method_settings = resolved_method_settings
 
     @property
     def task_settings(self) -> TaskSettings:
@@ -105,7 +118,31 @@ class SimpleTask(ABC):
     def method(self, new_value: str | SimpleKeyword | None) -> None:
         if not hasattr(self._method_settings, "method"):
             raise AttributeError("method is not defined in method_settings object")
-        self._method_settings.method = new_value  # type:ignore
+        if new_value is None:
+            self._method_settings.method = None  # type:ignore
+            return
+        resolved_type = MethodSettings.resolve_method_settings_type(new_value)
+        if isinstance(self._method_settings, resolved_type):
+            self._method_settings.method = new_value  # type:ignore
+        else:
+            common_fields: dict[str, typing.Any] = {"method": new_value}
+            for field in ("basis_set", "solvation_model", "solvent"):
+                if field in resolved_type.model_fields:
+                    val = getattr(self._method_settings, field, None)
+                    if val is not None:
+                        common_fields[field] = val
+            dropped = [
+                f
+                for f, v in self._method_settings.model_dump(exclude_unset=True).items()
+                if f not in common_fields and v is not None
+            ]
+            if dropped:
+                warnings.warn(
+                    f"Switching method family dropped settings: {', '.join(dropped)}",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            self._method_settings = resolved_type(**common_fields)
 
     @property
     def basis_set(self) -> SimpleKeyword | None:
@@ -142,78 +179,6 @@ class SimpleTask(ABC):
         if not hasattr(self._method_settings, "solvation_model"):
             raise AttributeError("solvation_model is not defined in method_settings object")
         self._method_settings.solvation_model = new_value  # type:ignore
-
-    @property
-    def grid(self) -> SimpleKeyword | None:
-        if hasattr(self._method_settings, "grid"):
-            return typing.cast(SimpleKeyword | None, self._method_settings.grid)
-        return None
-
-    @grid.setter
-    def grid(self, new_value: str | SimpleKeyword | None) -> None:
-        if not hasattr(self._method_settings, "grid"):
-            raise AttributeError("grid is not defined in method_settings object")
-        self._method_settings.grid = new_value
-
-    @property
-    def scf_maxiter(self) -> int | None:
-        if hasattr(self._method_settings, "scf_maxiter"):
-            return typing.cast(int | None, self._method_settings.scf_maxiter)
-        return None
-
-    @scf_maxiter.setter
-    def scf_maxiter(self, new_value: int | None) -> None:
-        if not hasattr(self._method_settings, "scf_maxiter"):
-            raise AttributeError("scf_maxiter is not defined in method_settings object")
-        self._method_settings.scf_maxiter = new_value
-
-    @property
-    def scf_threshold(self) -> SimpleKeyword | None:
-        if hasattr(self._method_settings, "scf_threshold"):
-            return typing.cast(SimpleKeyword | None, self._method_settings.scf_threshold)
-        return None
-
-    @scf_threshold.setter
-    def scf_threshold(self, new_value: str | SimpleKeyword | None) -> None:
-        if not hasattr(self._method_settings, "scf_threshold"):
-            raise AttributeError("scf_threshold is not defined in method_settings object")
-        self._method_settings.scf_threshold = new_value
-
-    @property
-    def scf_solver(self) -> SimpleKeyword | None:
-        if hasattr(self._method_settings, "scf_solver"):
-            return typing.cast(SimpleKeyword | None, self._method_settings.scf_solver)
-        return None
-
-    @scf_solver.setter
-    def scf_solver(self, new_value: str | SimpleKeyword | None) -> None:
-        if not hasattr(self._method_settings, "scf_solver"):
-            raise AttributeError("scf_solver is not defined in method_settings object")
-        self._method_settings.scf_solver = new_value
-
-    @property
-    def scf_stab(self) -> bool | None:
-        if hasattr(self._method_settings, "scf_stab"):
-            return typing.cast(bool | None, self._method_settings.scf_stab)
-        return None
-
-    @scf_stab.setter
-    def scf_stab(self, new_value: bool | None) -> None:
-        if not hasattr(self._method_settings, "scf_stab"):
-            raise AttributeError("scf_stab is not defined in method_settings object")
-        self._method_settings.scf_stab = new_value
-
-    @property
-    def scf_conv(self) -> SimpleKeyword | None:
-        if hasattr(self._method_settings, "scf_conv"):
-            return typing.cast(SimpleKeyword | None, self._method_settings.scf_conv)
-        return None
-
-    @scf_conv.setter
-    def scf_conv(self, new_value: str | SimpleKeyword | None) -> None:
-        if not hasattr(self._method_settings, "scf_conv"):
-            raise AttributeError("scf_conv is not defined in method_settings object")
-        self._method_settings.scf_conv = new_value
 
     def run(
         self,
@@ -351,47 +316,15 @@ class SimpleTask(ABC):
 class TaskResults(ABC):
     def __init__(self, calc_object: Calculator):
         self.calc_object = calc_object
-        self._parsed = False
-
-    @staticmethod
-    def output_parse(
-        func: typing.Callable[[typing.Any], typing.Any],
-    ) -> typing.Callable[[typing.Any], typing.Any]:
-        """
-        Decorator to ensure output parsing is performed before accessing results.
-
-        This decorator wraps methods of a `TaskResults` instance and guarantees
-        that the associated output has been parsed before the method is executed.
-        Parsing is performed lazily and only once per instance.
-
-        Parameters
-        ----------
-        func : Callable[[TaskResults], Any]
-            The method to wrap. It must be a method of `TaskResults` that relies
-            on parsed output data.
-
-        Returns
-        -------
-        Callable[[TaskResults], Any]
-            A wrapped method that ensures `self.output.parse()` has been called
-            before delegating to the original function.
-        """
-
-        @wraps(func)
-        def wrapper(self: "TaskResults") -> typing.Any:
-            if not self._parsed:
-                self.output.parse()
-                self._parsed = True
-            return func(self)
-
-        return wrapper
 
     @cached_property
     def output(self) -> Output:
         if not self.calc_object:
             raise ValueError("calc_object not set")
 
-        return self.calc_object.get_output()
+        out = self.calc_object.get_output()
+        out.parse()
+        return out
 
     @cached_property
     def status(self) -> bool:

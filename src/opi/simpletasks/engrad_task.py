@@ -32,7 +32,6 @@ class EngradTask(SimpleTask):
 
 class EngradResults(TaskResults):
     @property
-    @TaskResults.output_parse
     def final_energy(self) -> float:
         final_energy = self.output.get_final_energy()
 
@@ -42,7 +41,6 @@ class EngradResults(TaskResults):
         return final_energy
 
     @property
-    @TaskResults.output_parse
     def gradient(self) -> list[float]:
         gradient = self.output.get_gradient()
 

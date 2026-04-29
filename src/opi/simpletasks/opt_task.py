@@ -121,7 +121,6 @@ class OptTask(SimpleTask):
 
 class OptResults(TaskResults):
     @property
-    @TaskResults.output_parse
     def final_energy(self) -> float:
         final_energy = self.output.get_final_energy()
 
@@ -131,7 +130,6 @@ class OptResults(TaskResults):
         return final_energy
 
     @property
-    @TaskResults.output_parse
     def structure(self) -> Structure:
         structure = self.output.get_structure()
         if structure is None:
