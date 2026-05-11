@@ -11,8 +11,13 @@ from opi.input.simple_keywords.solvation_model import SolvationModelAndSolvent
 
 class Settings(BaseModel):
     """
-    TODO:
-    - add checking for Solvent and SolvationModel now that they are optional.
+    Base Pydantic model for all OPI task and method settings.
+
+    Subclasses declare typed fields whose annotations encode how each value
+    maps to an ORCA input: a single-element metadata tuple means a simple
+    keyword, a two-element tuple ``(block_name, attr)`` means a block option.
+    ``map_to_input`` reads those annotations at runtime to populate an
+    ``Input`` object automatically.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
@@ -119,6 +124,32 @@ class Settings(BaseModel):
         validator: type[SimpleKeywordBox],
         value: str | SimpleKeyword | SolvationModelAndSolvent,
     ) -> SimpleKeyword:
+        """
+        Resolve a field value to a ``SimpleKeyword``.
+
+        For ``SolvationModel`` fields the current ``solvent`` attribute is
+        combined with the model to produce a ``SolvationModelAndSolvent``
+        keyword; all other fields are looked up directly in their enum.
+
+        Parameters
+        ----------
+        validator : type[SimpleKeywordBox]
+            The enum class that owns the keyword (e.g. ``Dft``, ``BasisSet``).
+        value : str or SimpleKeyword or SolvationModelAndSolvent
+            Raw user-supplied value.
+
+        Returns
+        -------
+        SimpleKeyword
+            Resolved keyword ready to pass to ``Input.add_simple_keywords``.
+
+        Raises
+        ------
+        ValueError
+            If ``validator`` is ``SolvationModel`` but ``solvent`` is not set.
+        TypeError
+            If ``value`` is not a ``SolvationModelAndSolvent`` when required.
+        """
         if validator == SolvationModel:
             solvent_value = getattr(self, "solvent", None)
             if solvent_value is None:
@@ -134,6 +165,22 @@ class Settings(BaseModel):
         return new_keyword
 
     def __or__(self, other: "Settings") -> "Settings":
+        """
+        Merge two ``Settings`` objects of the same type.
+
+        Fields explicitly set on ``other`` take precedence; fields that were
+        not set on ``other`` keep their value from ``self``.
+
+        Parameters
+        ----------
+        other : Settings
+            Settings object whose set fields override those of ``self``.
+
+        Returns
+        -------
+        Settings
+            New instance of the same type containing the merged fields.
+        """
         if type(self) is not type(other):
             return NotImplemented
 

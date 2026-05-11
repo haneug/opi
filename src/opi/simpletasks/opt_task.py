@@ -10,6 +10,15 @@ from opi.simpletasks.method_settings import MethodSettings
 
 
 class OptSettings(TaskSettings):
+    """
+    Task settings for geometry optimisations (``! OPT``).
+
+    The ``opt_h``, ``lopt``, and ``optrigid`` flags are translated to the
+    corresponding ORCA keywords in ``map_to_input``; combinations of
+    ``opt_h`` and ``lopt`` map to ``OPT_H``, ``L_OPT``, or ``L_OPT_H``
+    automatically.
+    """
+
     _name: str = "opt"
     task_keyword: typing.Annotated[SimpleKeyword, Task] = Task.OPT
     opt_threshold: typing.Annotated[SimpleKeyword, OptThreshold] | None = None
@@ -19,6 +28,23 @@ class OptSettings(TaskSettings):
     opt_maxiter: typing.Annotated[int, "BlockGeom", "maxiter"] | None = None
 
     def map_to_input(self, input_object: Input) -> Input:
+        """
+        Extend the base mapping with optimisation-mode keywords.
+
+        Appends ``RIGIDBODYOPT`` when ``optrigid=True``, and selects
+        ``OPT_H`` / ``L_OPT`` / ``L_OPT_H`` based on the ``opt_h`` and
+        ``lopt`` flags.
+
+        Parameters
+        ----------
+        input_object : Input
+            ``Input`` object to populate.
+
+        Returns
+        -------
+        Input
+            Modified ``Input`` object.
+        """
         input_object = super().map_to_input(input_object)
 
         if self.optrigid:
@@ -38,6 +64,15 @@ class OptSettings(TaskSettings):
 
 
 class OptTask(SimpleTask):
+    """
+    High-level task for geometry optimisations.
+
+    Exposes convenience properties (``opt_threshold``, ``optrigid``,
+    ``opt_h``, ``lopt``, ``opt_maxiter``) that forward to the underlying
+    ``OptSettings`` object.  Returns ``OptResults`` with the optimised
+    energy and structure.
+    """
+
     _task_settings: OptSettings
 
     def __init__(
@@ -80,6 +115,7 @@ class OptTask(SimpleTask):
 
     @property
     def opt_threshold(self) -> SimpleKeyword | None:
+        """Convergence threshold keyword (e.g. ``OptThreshold.TIGHTOPT``)."""
         return self._task_settings.opt_threshold
 
     @opt_threshold.setter
@@ -88,6 +124,7 @@ class OptTask(SimpleTask):
 
     @property
     def optrigid(self) -> bool:
+        """When ``True``, adds ``RIGIDBODYOPT`` for rigid-body optimisation."""
         return self._task_settings.optrigid
 
     @optrigid.setter
@@ -96,6 +133,7 @@ class OptTask(SimpleTask):
 
     @property
     def opt_h(self) -> bool:
+        """When ``True``, optimises hydrogen positions only (``OPT_H`` / ``L_OPT_H``)."""
         return self._task_settings.opt_h
 
     @opt_h.setter
@@ -104,6 +142,7 @@ class OptTask(SimpleTask):
 
     @property
     def lopt(self) -> bool:
+        """When ``True``, uses loose optimisation criteria (``L_OPT`` / ``L_OPT_H``)."""
         return self._task_settings.lopt
 
     @lopt.setter
@@ -112,6 +151,7 @@ class OptTask(SimpleTask):
 
     @property
     def opt_maxiter(self) -> int | None:
+        """Maximum number of geometry optimisation steps (``%geom MaxIter``)."""
         return self._task_settings.opt_maxiter
 
     @opt_maxiter.setter
@@ -120,8 +160,18 @@ class OptTask(SimpleTask):
 
 
 class OptResults(TaskResults):
+    """Results from a geometry optimisation."""
+
     @property
     def final_energy(self) -> float:
+        """
+        Energy at the optimised geometry in Hartree.
+
+        Raises
+        ------
+        ValueError
+            If the energy is not present in the ORCA output.
+        """
         final_energy = self.output.get_final_energy()
 
         if final_energy is None:
@@ -131,6 +181,14 @@ class OptResults(TaskResults):
 
     @property
     def structure(self) -> Structure:
+        """
+        Optimised geometry.
+
+        Raises
+        ------
+        ValueError
+            If the structure is not present in the ORCA output.
+        """
         structure = self.output.get_structure()
         if structure is None:
             raise ValueError("Could not get structure from ORCA Output")
@@ -139,4 +197,5 @@ class OptResults(TaskResults):
 
     @property
     def primary_property(self) -> tuple[float, Structure]:
+        """``(final_energy, optimised_structure)`` tuple."""
         return self.final_energy, self.structure

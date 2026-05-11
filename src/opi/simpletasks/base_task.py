@@ -21,11 +21,37 @@ from opi.simpletasks.settings import Settings
 
 
 class TaskSettings(Settings):
+    """
+    Base settings class for task-level keywords (SP, OPT, FREQ, …).
+
+    Subclasses set ``task_keyword`` to the default ``Task`` enum member for
+    the calculation type.  Additional task-specific options (convergence
+    thresholds, flags, block parameters) are declared as typed fields in the
+    subclass.
+    """
+
     model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True, extra="forbid")
     task_keyword: typing.Annotated[SimpleKeyword, SimpleKeywordBox]
 
 
 class SimpleTask(ABC):
+    """
+    Abstract base class for all high-level OPI calculation tasks.
+
+    Combines a ``TaskSettings`` (what kind of calculation to run) with a
+    ``MethodSettings`` (which method/basis/solvent to use) and exposes a
+    ``run()`` method that writes the ORCA input, executes the calculation,
+    and returns a ``TaskResults`` object.
+
+    Concrete subclasses (``SinglePointTask``, ``OptTask``, …) bind the
+    specific settings and results types through ``_task_settings_type`` and
+    ``_results_type``.
+
+    Method family switching via the ``method`` setter automatically migrates
+    compatible fields (``basis_set``, ``solvation_model``, ``solvent``) and
+    warns about any settings that cannot be transferred.
+    """
+
     _results_type: type["TaskResults"]
     _task_settings_type: type[TaskSettings]
     _task_settings: TaskSettings
@@ -40,6 +66,33 @@ class SimpleTask(ABC):
         task_settings: "TaskSettings | dict[str, typing.Any] | None" = None,
         method_settings: "MethodSettings | dict[str, typing.Any] | None" = None,
     ):
+        """
+        Parameters
+        ----------
+        method : str or SimpleKeyword, optional
+            Shorthand for setting ``method_settings.method``.  Mutually
+            exclusive with passing a fully configured ``method_settings``
+            object that already has a method.
+        basis_set : str or SimpleKeyword, optional
+            Shorthand for ``method_settings.basis_set``.
+        solvation_model : str or SimpleKeyword, optional
+            Shorthand for ``method_settings.solvation_model``.
+        solvent : str or Solvent, optional
+            Shorthand for ``method_settings.solvent``.
+        task_settings : TaskSettings or dict, optional
+            Overrides the default task settings.  A plain ``dict`` is
+            validated against the concrete ``TaskSettings`` subclass.
+        method_settings : MethodSettings or dict, optional
+            Pre-built method settings object.  When ``method`` is also given,
+            values from the shorthand parameters take precedence over fields
+            already present in ``method_settings``.
+
+        Raises
+        ------
+        ValueError
+            If neither ``method`` nor a ``method_settings`` object with a
+            method is provided.
+        """
         if isinstance(task_settings, dict):
             self._task_settings = self._task_settings_type.model_validate(task_settings)
         else:
@@ -80,10 +133,12 @@ class SimpleTask(ABC):
 
     @property
     def task_settings(self) -> TaskSettings:
+        """Task-level settings (keyword, thresholds, flags)."""
         return self._task_settings
 
     @property
     def method_settings(self) -> MethodSettings:
+        """Method-level settings (functional, basis set, solvent, …)."""
         return self._method_settings
 
     @property
@@ -106,16 +161,32 @@ class SimpleTask(ABC):
 
     @property
     def keyword(self) -> SimpleKeyword:
+        """The primary task keyword (e.g. ``Task.SP``, ``Task.OPT``)."""
         return self._task_settings.task_keyword
 
     @property
     def method(self) -> SimpleKeyword | None:
+        """Active method keyword, or ``None`` if the settings type has no method field."""
         if hasattr(self._method_settings, "method"):
             return self._method_settings.method
         return None
 
     @method.setter
     def method(self, new_value: str | SimpleKeyword | None) -> None:
+        """
+        Change the method, migrating to a different settings type when needed.
+
+        If ``new_value`` belongs to the same method family as the current
+        settings, the field is updated in-place.  Otherwise a new settings
+        object of the correct type is created, carrying over compatible fields
+        (``basis_set``, ``solvation_model``, ``solvent``) and warning about
+        any fields that are dropped.
+
+        Raises
+        ------
+        AttributeError
+            If the current settings type does not have a ``method`` field.
+        """
         if not hasattr(self._method_settings, "method"):
             raise AttributeError("method is not defined in method_settings object")
         if new_value is None:
@@ -146,36 +217,57 @@ class SimpleTask(ABC):
 
     @property
     def basis_set(self) -> SimpleKeyword | None:
+        """Active basis-set keyword, or ``None`` if the settings type has no basis_set field."""
         if hasattr(self._method_settings, "basis_set"):
             return self._method_settings.basis_set
         return None
 
     @basis_set.setter
     def basis_set(self, new_value: str | SimpleKeyword | None) -> None:
+        """
+        Raises
+        ------
+        AttributeError
+            If the current settings type does not have a ``basis_set`` field.
+        """
         if not hasattr(self._method_settings, "basis_set"):
             raise AttributeError("basis_set is not defined in method_settings object")
         self._method_settings.basis_set = new_value  # type:ignore
 
     @property
     def solvent(self) -> str | None:
+        """Solvent name, or ``None`` if the settings type has no solvent field."""
         if hasattr(self._method_settings, "solvent"):
             return self._method_settings.solvent
         return None
 
     @solvent.setter
     def solvent(self, new_value: str | None) -> None:
+        """
+        Raises
+        ------
+        AttributeError
+            If the current settings type does not have a ``solvent`` field.
+        """
         if not hasattr(self._method_settings, "solvent"):
             raise AttributeError("solvent is not defined in method_settings object")
         self._method_settings.solvent = new_value
 
     @property
     def solvation_model(self) -> SimpleKeyword | None:
+        """Solvation-model keyword, or ``None`` if the settings type has no solvation_model field."""
         if hasattr(self._method_settings, "solvation_model"):
             return self._method_settings.solvation_model
         return None
 
     @solvation_model.setter
     def solvation_model(self, new_value: str | SimpleKeyword | None) -> None:
+        """
+        Raises
+        ------
+        AttributeError
+            If the current settings type does not have a ``solvation_model`` field.
+        """
         if not hasattr(self._method_settings, "solvation_model"):
             raise AttributeError("solvation_model is not defined in method_settings object")
         self._method_settings.solvation_model = new_value  # type:ignore
@@ -314,11 +406,33 @@ class SimpleTask(ABC):
 
 
 class TaskResults(ABC):
+    """
+    Abstract base class for the results returned by a completed task.
+
+    Wraps the ``Calculator`` that ran the job and provides lazy-evaluated
+    access to the parsed ``Output``.  Subclasses expose task-specific
+    properties (energies, structures, gradients, …) and must implement
+    ``primary_property``.
+    """
+
     def __init__(self, calc_object: Calculator):
+        """
+        Parameters
+        ----------
+        calc_object : Calculator
+            The calculator that ran the calculation.
+        """
         self.calc_object = calc_object
 
     @cached_property
     def output(self) -> Output:
+        """
+        Parsed ORCA output.
+
+        Lazily calls ``get_output()`` and ``parse()`` on the first access so
+        that result objects can be created without immediately hitting the
+        filesystem.
+        """
         if not self.calc_object:
             raise ValueError("calc_object not set")
 
@@ -328,9 +442,11 @@ class TaskResults(ABC):
 
     @cached_property
     def status(self) -> bool:
+        """``True`` if the job terminated normally and SCF converged."""
         return self.output.terminated_normally() and self.output.scf_converged()
 
     @cached_property
     @abstractmethod
     def primary_property(self) -> typing.Any:
+        """The most important result for this task type (energy, structure, …)."""
         pass

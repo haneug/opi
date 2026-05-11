@@ -8,11 +8,20 @@ from opi.simpletasks.method_settings import MethodSettings
 
 
 class SinglePointSettings(TaskSettings):
+    """Task settings for a single-point energy calculation (``! SP``)."""
+
     _name: str = "singlepoint"
     task_keyword: typing.Annotated[SimpleKeyword, Task] = Task.SP
 
 
 class SinglePointTask(SimpleTask):
+    """
+    High-level task for single-point energy calculations.
+
+    Configures ORCA with the ``SP`` keyword and returns a
+    ``SinglePointResults`` object whose ``final_energy`` attribute holds the
+    total energy in Hartree.
+    """
     _task_settings: SinglePointSettings
 
     def __init__(
@@ -55,8 +64,18 @@ class SinglePointTask(SimpleTask):
 
 
 class SinglePointResults(TaskResults):
+    """Results from a single-point energy calculation."""
+
     @property
     def final_energy(self) -> float:
+        """
+        Total energy of the last SCF cycle in Hartree.
+
+        Raises
+        ------
+        ValueError
+            If the energy is not present in the ORCA output.
+        """
         final_energy = self.output.get_final_energy()
 
         if final_energy is None:
@@ -66,4 +85,5 @@ class SinglePointResults(TaskResults):
 
     @property
     def primary_property(self) -> float:
+        """Alias for ``final_energy``."""
         return float(self.final_energy)
