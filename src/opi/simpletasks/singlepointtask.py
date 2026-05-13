@@ -22,6 +22,7 @@ class SinglePointTask(SimpleTask):
     ``SinglePointResults`` object whose ``final_energy`` attribute holds the
     total energy in Hartree.
     """
+
     _task_settings: SinglePointSettings
 
     def __init__(

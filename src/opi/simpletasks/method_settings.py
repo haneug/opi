@@ -6,6 +6,7 @@ from pydantic_core.core_schema import ValidationInfo
 
 from opi.input import Input
 from opi.input.simple_keywords import (
+    AuxBasisSet,
     BasisSet,
     Dft,
     DispersionCorrection,
@@ -16,9 +17,9 @@ from opi.input.simple_keywords import (
     SolvationModel,
     Solvent,
     Sqm,
-    Wft, AuxBasisSet,
+    Wft,
 )
-from opi.input.simple_keywords.dlpno import PNOThresh, Dlpno
+from opi.input.simple_keywords.dlpno import Dlpno, PNOThresh
 from opi.input.simple_keywords.scf import Scf, ScfConvergence, ScfSolver, ScfThreshold
 from opi.simpletasks.settings import Settings
 
@@ -336,7 +337,9 @@ class ForceFieldSettings(MethodSettings):
     @model_validator(mode="after")
     def cross_validate(self) -> "ForceFieldSettings":
         if self.basis_set:
-            warnings.warn("Basis Set will be ignored due to selection of Force Field method", UserWarning)
+            warnings.warn(
+                "Basis Set will be ignored due to selection of Force Field method", UserWarning
+            )
             self.basis_set = None
 
         return self
@@ -394,4 +397,3 @@ class DlpnoCcSettings(MethodSettings):
             input_object.add_simple_keywords(Dlpno.LED)
 
         return input_object
-

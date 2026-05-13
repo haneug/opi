@@ -1,3 +1,4 @@
+import types as builtin_types
 import typing
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
@@ -56,7 +57,8 @@ class Settings(BaseModel):
         """
         origin = typing.get_origin(hint)
         args = typing.get_args(hint)
-        if origin is typing.Union:
+        is_union = origin is typing.Union or isinstance(hint, builtin_types.UnionType)
+        if is_union:
             non_none_args = [arg for arg in args if arg is not type(None)]
             if non_none_args:
                 return Settings._get_field_metadata(non_none_args[0])

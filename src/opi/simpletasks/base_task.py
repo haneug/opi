@@ -30,7 +30,9 @@ class TaskSettings(Settings):
     subclass.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True, extra="forbid")
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True, validate_assignment=True, extra="forbid"
+    )
     task_keyword: typing.Annotated[SimpleKeyword, SimpleKeywordBox]
 
 
@@ -190,7 +192,7 @@ class SimpleTask(ABC):
         if not hasattr(self._method_settings, "method"):
             raise AttributeError("method is not defined in method_settings object")
         if new_value is None:
-            self._method_settings.method = None  # type:ignore
+            self._method_settings.method = None
             return
         resolved_type = MethodSettings.resolve_method_settings_type(new_value)
         if isinstance(self._method_settings, resolved_type):

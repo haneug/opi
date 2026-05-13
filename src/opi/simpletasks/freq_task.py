@@ -21,6 +21,7 @@ class FreqTask(SimpleTask):
     terminated normally (SCF convergence is not checked separately because
     frequency jobs always follow an SCF step).
     """
+
     _task_settings: FreqSettings
 
     def __init__(

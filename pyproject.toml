@@ -128,6 +128,7 @@ markers = [
     "input: input side unit tests",
     "unit: unit tests",
     "json_files: Export JSON files with --update-json-files",
+    "simpletasks: simpletasks unit tests",
 ]
 
 

@@ -19,6 +19,7 @@ class EngradTask(SimpleTask):
     Returns an ``EngradResults`` object containing the total energy and
     the Cartesian gradient vector.
     """
+
     _task_settings: EngradSettings
 
     def __init__(

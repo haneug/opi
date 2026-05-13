@@ -1,0 +1,231 @@
+import pytest
+
+from opi.input import Input
+from opi.input.blocks import BlockGeom
+from opi.input.simple_keywords import BasisSet, Dft, Goat, SimpleKeyword, Task
+from opi.input.simple_keywords.opt import Opt
+from opi.simpletasks.engrad_task import EngradTask
+from opi.simpletasks.freq_task import FreqTask
+from opi.simpletasks.goat_task import GoatSettings, GoatTask
+from opi.simpletasks.method_settings import DFTSettings, SQMSettings
+from opi.simpletasks.opt_task import OptSettings, OptTask
+from opi.simpletasks.singlepointtask import SinglePointTask
+
+"""
+Unit tests for SimpleTask subclasses and TaskSettings:
+- Constructor argument validation (method dispatch, dict args, no-method error)
+- input_object builds correct simple keywords for each task type
+- OptSettings flag combinations (opt_h / lopt / optrigid / opt_maxiter)
+- GoatSettings boolean flags (goat_react / goat_diversity / goat_explore)
+- OptTask convenience property forwarding to task_settings
+- Method-family switching (same family and cross-family)
+- basis_set getter / setter round-trip
+"""
+
+
+# ---------------------------------------------------------------------------
+# Construction
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_simple_task_no_method_raises() -> None:
+    """Creating a task without a method or method_settings raises ValueError."""
+    with pytest.raises(ValueError):
+        SinglePointTask()
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+@pytest.mark.parametrize(
+    "method,expected_cls",
+    [
+        ("pbe", DFTSettings),
+        ("gfn2-xtb", SQMSettings),
+    ],
+)
+def test_simple_task_method_dispatch(method: str, expected_cls: type) -> None:
+    """Task constructor routes to the correct MethodSettings subclass by method string."""
+    task = SinglePointTask(method=method)
+    assert isinstance(task.method_settings, expected_cls)
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_simple_task_dict_method_settings() -> None:
+    """A plain dict passed as method_settings is validated and dispatched correctly."""
+    task = SinglePointTask(method_settings={"method": "pbe"})
+    assert isinstance(task.method_settings, DFTSettings)
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_simple_task_dict_task_settings() -> None:
+    """A plain dict passed as task_settings is validated against the task's settings type."""
+    task = SinglePointTask(method="pbe", task_settings={})
+    assert task.task_settings is not None
+
+
+# ---------------------------------------------------------------------------
+# input_object — task keyword
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+@pytest.mark.parametrize(
+    "task_cls,expected_kw",
+    [
+        (SinglePointTask, Task.SP),
+        (OptTask, Task.OPT),
+        (FreqTask, Task.FREQ),
+        (EngradTask, Task.ENGRAD),
+        (GoatTask, Goat.GOAT),
+    ],
+)
+def test_input_object_has_task_keyword(task_cls: type, expected_kw: SimpleKeyword) -> None:
+    """input_object contains the primary task keyword for each task type."""
+    inp = task_cls(method="pbe").input_object
+    assert inp.has_simple_keywords(expected_kw) == (True,)
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_input_object_has_method_and_basis_set() -> None:
+    """input_object contains the task keyword, method, and basis-set keywords."""
+    inp = SinglePointTask(method="pbe", basis_set="def2-svp").input_object
+    assert inp.has_simple_keywords(Task.SP, Dft.PBE, BasisSet.DEF2_SVP) == (True, True, True)
+
+
+# ---------------------------------------------------------------------------
+# OptSettings.map_to_input — flag combinations
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+@pytest.mark.parametrize(
+    "opt_h,lopt,expected_kw",
+    [
+        (True, False, Opt.OPTH),
+        (False, True, Opt.L_OPT),
+        (True, True, Opt.L_OPTH),
+    ],
+)
+def test_opt_mode_keywords(opt_h: bool, lopt: bool, expected_kw: SimpleKeyword) -> None:
+    """OptSettings flag combinations map to the correct ORCA optimisation-mode keyword."""
+    inp = OptSettings(opt_h=opt_h, lopt=lopt).map_to_input(Input())
+    assert inp.has_simple_keywords(expected_kw) == (True,)
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_opt_no_mode_flags_adds_no_mode_keyword() -> None:
+    """Default OptSettings (no flags) does not add OPT_H / L_OPT / L_OPT_H."""
+    inp = OptSettings().map_to_input(Input())
+    for kw in (Opt.OPTH, Opt.L_OPT, Opt.L_OPTH):
+        assert inp.has_simple_keywords(kw) == (False,)
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_opt_rigid_body_keyword() -> None:
+    """OptSettings(optrigid=True) adds the RIGIDBODYOPT keyword."""
+    inp = OptSettings(optrigid=True).map_to_input(Input())
+    assert inp.has_simple_keywords(Opt.RIGIDBODYOPT) == (True,)
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_opt_maxiter_creates_geom_block() -> None:
+    """OptSettings(opt_maxiter=N) creates a %geom block with MaxIter set."""
+    inp = OptSettings(opt_maxiter=100).map_to_input(Input())
+    assert inp.has_blocks(BlockGeom()) == (True,)
+    assert inp.blocks[BlockGeom].maxiter == 100
+
+
+# ---------------------------------------------------------------------------
+# GoatSettings.map_to_input — boolean flags
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+@pytest.mark.parametrize(
+    "flag,expected_kw",
+    [
+        ("goat_react", Goat.GOAT_REACT),
+        ("goat_diversity", Goat.GOAT_DIVERSITY),
+        ("goat_explore", Goat.GOAT_EXPLORE),
+    ],
+)
+def test_goat_flag_keywords(flag: str, expected_kw: SimpleKeyword) -> None:
+    """GoatSettings boolean flags produce the correct ORCA GOAT-variant keyword."""
+    inp = GoatSettings(**{flag: True}).map_to_input(Input())
+    assert inp.has_simple_keywords(expected_kw) == (True,)
+
+
+# ---------------------------------------------------------------------------
+# OptTask convenience property forwarding
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_opt_task_properties_forward_to_task_settings() -> None:
+    """Setting OptTask properties propagates to the underlying OptSettings object."""
+    opt = OptTask(method="pbe")
+
+    opt.optrigid = True
+    assert opt.task_settings.optrigid is True
+
+    opt.opt_h = True
+    assert opt.task_settings.opt_h is True
+
+    opt.lopt = True
+    assert opt.task_settings.lopt is True
+
+    opt.opt_maxiter = 100
+    assert opt.task_settings.opt_maxiter == 100
+
+
+# ---------------------------------------------------------------------------
+# Method switching
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_method_switch_same_family_updates_in_place() -> None:
+    """Switching to a method in the same family updates the existing settings object."""
+    task = SinglePointTask(method="pbe")
+    task.method = "tpss"
+    assert isinstance(task.method_settings, DFTSettings)
+    assert task.method == Dft.TPSS
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_method_switch_cross_family_warns_about_dropped_fields() -> None:
+    """Switching method family warns about settings fields that cannot be transferred."""
+    task = SinglePointTask(method_settings=DFTSettings(method="pbe", scf_maxiter=500))
+    with pytest.warns(UserWarning, match="scf_maxiter"):
+        task.method = "gfn2-xtb"
+    assert isinstance(task.method_settings, SQMSettings)
+
+
+# ---------------------------------------------------------------------------
+# basis_set getter / setter
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_basis_set_getter_and_setter() -> None:
+    """basis_set property reads and writes through to method_settings correctly."""
+    task = SinglePointTask(method="pbe", basis_set="def2-svp")
+    assert task.basis_set == BasisSet.DEF2_SVP
+
+    task.basis_set = "def2-tzvp"
+    assert task.basis_set == BasisSet.DEF2_TZVP
