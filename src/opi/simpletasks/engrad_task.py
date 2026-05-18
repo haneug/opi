@@ -1,8 +1,6 @@
 import typing
-from pathlib import Path
 
 from opi.input.simple_keywords import SimpleKeyword, Solvent, Task
-from opi.input.structures import BaseStructureFile, Structure
 from opi.simpletasks.base_task import SimpleTask, TaskResults, TaskSettings
 from opi.simpletasks.method_settings import MethodSettings
 
@@ -12,55 +10,6 @@ class EngradSettings(TaskSettings):
 
     _name: str = "engrad"
     task_keyword: typing.Annotated[SimpleKeyword, Task] = Task.ENGRAD
-
-
-class EngradTask(SimpleTask):
-    """
-    High-level task for single-point energy and gradient calculations.
-
-    Returns an ``EngradResults`` object containing the total energy and
-    the Cartesian gradient vector.
-    """
-
-    _task_settings: EngradSettings
-
-    def __init__(
-        self,
-        method: str | SimpleKeyword | None = None,
-        basis_set: str | SimpleKeyword | None = None,
-        solvation_model: str | SimpleKeyword | None = None,
-        solvent: str | Solvent | None = None,
-        task_settings: EngradSettings | None = None,
-        method_settings: MethodSettings | None = None,
-    ):
-        self._task_settings_type = EngradSettings
-        super().__init__(
-            method, basis_set, solvation_model, solvent, task_settings, method_settings
-        )
-
-        self._results_type = EngradResults
-
-    def run(
-        self,
-        basename: str,
-        struct: Structure | BaseStructureFile,
-        working_dir: Path = Path("RUN"),
-        ncores: int | None = None,
-        memory: int | None = None,
-        moinp: Path | None = None,
-        strict: bool = False,
-    ) -> "EngradResults":
-        single_point_result = super().run(
-            basename=basename,
-            struct=struct,
-            working_dir=working_dir,
-            ncores=ncores,
-            memory=memory,
-            moinp=moinp,
-            strict=strict,
-        )
-
-        return typing.cast(EngradResults, single_point_result)
 
 
 class EngradResults(TaskResults):
@@ -104,3 +53,28 @@ class EngradResults(TaskResults):
     def primary_property(self) -> tuple[float, list[float]]:
         """``(final_energy, gradient)`` tuple."""
         return self.final_energy, self.gradient
+
+
+class EngradTask(SimpleTask[EngradResults]):
+    """
+    High-level task for single-point energy and gradient calculations.
+
+    Returns an ``EngradResults`` object containing the total energy and
+    the Cartesian gradient vector.
+    """
+
+    _task_settings: EngradSettings
+    _results_type = EngradResults
+
+    def __init__(
+        self,
+        method: str | SimpleKeyword | None = None,
+        basis_set: str | SimpleKeyword | None = None,
+        solvation_model: str | SimpleKeyword | None = None,
+        solvent: str | Solvent | None = None,
+        task_settings: EngradSettings | None = None,
+        method_settings: MethodSettings | None = None,
+    ):
+        super().__init__(
+            method, basis_set, solvation_model, solvent, task_settings, method_settings
+        )

@@ -36,7 +36,10 @@ class TaskSettings(Settings):
     task_keyword: typing.Annotated[SimpleKeyword, SimpleKeywordBox]
 
 
-class SimpleTask(ABC):
+_RT = typing.TypeVar("_RT", bound="TaskResults")
+
+
+class SimpleTask(ABC, typing.Generic[_RT]):
     """
     Abstract base class for all high-level OPI calculation tasks.
 
@@ -47,14 +50,17 @@ class SimpleTask(ABC):
 
     Concrete subclasses (``SinglePointTask``, ``OptTask``, …) bind the
     specific settings and results types through ``_task_settings_type`` and
-    ``_results_type``.
+    ``_results_type``.  Each subclass is parameterised with its concrete
+    results type (e.g. ``SimpleTask[FreqResults]``) so that ``run``,
+    ``restart``, and ``from_string`` all return the exact subtype without
+    casts.
 
     Method family switching via the ``method`` setter automatically migrates
     compatible fields (``basis_set``, ``solvation_model``, ``solvent``) and
     warns about any settings that cannot be transferred.
     """
 
-    _results_type: type["TaskResults"]
+    _results_type: type[_RT]
     _task_settings_type: type[TaskSettings]
     _task_settings: TaskSettings
     _method_settings: MethodSettings
@@ -274,6 +280,100 @@ class SimpleTask(ABC):
             raise AttributeError("solvation_model is not defined in method_settings object")
         self._method_settings.solvation_model = new_value  # type:ignore
 
+    @classmethod
+    def from_string(
+        cls,
+        string: str,
+        basename: str,
+        structure: Structure | None = None,
+        working_dir: Path = Path("RUN"),
+        ncores: int | None = None,
+        memory: int | None = None,
+        moinp: Path | None = None,
+        strict: bool = False,
+    ) -> _RT:
+        """
+        Run a calculation from a raw ORCA keyword string.
+
+        Bypasses the typed ``TaskSettings``/``MethodSettings`` API and feeds
+        keywords directly into the input file.  Useful as an escape hatch when
+        the desired keyword combination is not yet covered by the settings
+        classes.
+
+        Parameters
+        ----------
+        string : str
+            Space-separated ORCA simple keywords (leading ``!`` characters are
+            stripped automatically).  Example: ``"! B3LYP def2-SVP FREQ"``.
+        basename : str
+            Base name for the output files.
+        structure : Structure, optional
+            Input structure.  May be ``None`` if the structure is embedded in
+            the keyword string or an external file block.
+        working_dir : Path, optional
+            Directory in which to run the calculation.  Created (or recreated)
+            unless ``strict=True``.  Defaults to ``Path("RUN")``.
+        ncores : int, optional
+            Number of CPU cores to use.
+        memory : int, optional
+            Memory in MB.
+        moinp : Path, optional
+            Path to an MO input file for seeding the SCF guess.
+        strict : bool, optional
+            If ``True``, ``working_dir`` must already exist and be empty;
+            raises ``ValueError`` otherwise.  Defaults to ``False``.
+
+        Returns
+        -------
+        TaskResults
+            Results object of the concrete type bound to this task class.
+
+        Raises
+        ------
+        ValueError
+            If ``strict=True`` and the working directory does not exist or is
+            not empty.
+        """
+        if strict:
+            # Must already exist
+            if not working_dir.exists():
+                raise ValueError(
+                    f"Working directory {working_dir.resolve()} does not exist (strict mode)"
+                )
+
+            # Must be empty
+            if any(working_dir.iterdir()):
+                raise ValueError(
+                    f"Working directory {working_dir.resolve()} is not empty (strict mode)"
+                )
+
+        else:
+            # Non-strict: recreate directory
+            if working_dir.exists():
+                shutil.rmtree(working_dir)
+            working_dir.mkdir()
+
+        calc = Calculator(basename, working_dir=working_dir)
+        calc.structure = structure
+        inp = calc.input
+        keywords = string.split(" ")
+        for keyword in keywords:
+            keyword = keyword.strip("!")
+            inp.add_simple_keywords(SimpleKeyword(keyword))
+
+        if ncores is not None:
+            inp.ncores = ncores
+
+        if memory is not None:
+            inp.memory = memory
+
+        if moinp is not None:
+            inp.moinp = moinp
+
+        calc.write_and_run()
+
+        return cls._results_type(calc_object=calc)
+
     def run(
         self,
         basename: str,
@@ -283,7 +383,7 @@ class SimpleTask(ABC):
         memory: int | None = None,
         moinp: Path | None = None,
         strict: bool = False,
-    ) -> "TaskResults":
+    ) -> _RT:
         """
         Execute the computational task with the given structure and settings.
 
@@ -355,7 +455,7 @@ class SimpleTask(ABC):
 
         return self._results_type(calc_object=calc)
 
-    def _restart(
+    def restart(
         self,
         previous_results: "TaskResults",
         basename: str | None = None,
@@ -365,24 +465,58 @@ class SimpleTask(ABC):
         memory: int | None = None,
         moinp: Path | None = None,
         use_previous_orbitals: bool = False,
-    ) -> "TaskResults":
+    ) -> _RT:
         """
-        TODO:
-        - finish restart implementation (low on priority list)
+        Re-run the task, inheriting settings from a previous calculation.
+
+        All parameters default to the values used in ``previous_results`` and
+        only need to be supplied when overriding them.  The target working
+        directory is wiped and recreated by the underlying ``run()`` call, so
+        the previous output files are not preserved unless ``working_dir`` is
+        changed.
+
         Parameters
         ----------
-        previous_results
-        basename
-        struct
-        working_dir
-        ncores
-        memory
-        moinp
-        use_previous_orbitals
+        previous_results : TaskResults
+            Results object from the earlier run.  Provides fallback values for
+            ``basename``, ``struct``, ``working_dir``, ``ncores``, and
+            ``memory``.
+        basename : str, optional
+            Job name for the new calculation.  Defaults to the basename of the
+            previous run.
+        struct : Structure or BaseStructureFile, optional
+            Input structure.  Defaults to the structure used in the previous
+            run.  Raises ``ValueError`` if no structure can be determined.
+        working_dir : Path, optional
+            Directory in which to run the new calculation.  Defaults to the
+            working directory of the previous run (which will be overwritten).
+        ncores : int, optional
+            Number of CPU cores.  Defaults to the value from the previous run.
+        memory : int, optional
+            Memory in MB.  Defaults to the value from the previous run.
+        moinp : Path, optional
+            Explicit path to an MO input file.  Ignored when
+            ``use_previous_orbitals=True``.  Defaults to the ``moinp`` of the
+            previous run.
+        use_previous_orbitals : bool, optional
+            If ``True``, passes the ``.gbw`` file from the previous calculation
+            as ``moinp`` to seed the SCF guess.  Raises ``FileNotFoundError``
+            if the file does not exist.
 
         Returns
         -------
+        TaskResults
+            Results of the new calculation, of the same concrete type as this
+            task's ``_results_type``.
 
+        Raises
+        ------
+        ValueError
+            If no structure is available from either the argument or the
+            previous results.
+        FileNotFoundError
+            If ``use_previous_orbitals=True`` and the ``.gbw`` file from the
+            previous run is missing.
         """
         prev_calc = previous_results.calc_object
 

@@ -1,10 +1,9 @@
 import typing
-from pathlib import Path
 
 from opi.input import Input
 from opi.input.simple_keywords import SimpleKeyword, Solvent, Task
 from opi.input.simple_keywords.opt import Opt, OptThreshold
-from opi.input.structures import BaseStructureFile, Structure
+from opi.input.structures import Structure
 from opi.simpletasks.base_task import SimpleTask, TaskResults, TaskSettings
 from opi.simpletasks.method_settings import MethodSettings
 
@@ -63,7 +62,49 @@ class OptSettings(TaskSettings):
         return input_object
 
 
-class OptTask(SimpleTask):
+class OptResults(TaskResults):
+    """Results from a geometry optimisation."""
+
+    @property
+    def final_energy(self) -> float:
+        """
+        Energy at the optimised geometry in Hartree.
+
+        Raises
+        ------
+        ValueError
+            If the energy is not present in the ORCA output.
+        """
+        final_energy = self.output.get_final_energy()
+
+        if final_energy is None:
+            raise ValueError("Could not get final energy from ORCA Output")
+
+        return final_energy
+
+    @property
+    def structure(self) -> Structure:
+        """
+        Optimised geometry.
+
+        Raises
+        ------
+        ValueError
+            If the structure is not present in the ORCA output.
+        """
+        structure = self.output.get_structure()
+        if structure is None:
+            raise ValueError("Could not get structure from ORCA Output")
+
+        return structure
+
+    @property
+    def primary_property(self) -> tuple[float, Structure]:
+        """``(final_energy, optimised_structure)`` tuple."""
+        return self.final_energy, self.structure
+
+
+class OptTask(SimpleTask[OptResults]):
     """
     High-level task for geometry optimisations.
 
@@ -74,6 +115,7 @@ class OptTask(SimpleTask):
     """
 
     _task_settings: OptSettings
+    _results_type = OptResults
 
     def __init__(
         self,
@@ -84,34 +126,9 @@ class OptTask(SimpleTask):
         task_settings: OptSettings | None = None,
         method_settings: MethodSettings | None = None,
     ):
-        self._task_settings_type = OptSettings
         super().__init__(
             method, basis_set, solvation_model, solvent, task_settings, method_settings
         )
-
-        self._results_type = OptResults
-
-    def run(
-        self,
-        basename: str,
-        struct: Structure | BaseStructureFile,
-        working_dir: Path = Path("RUN"),
-        ncores: int | None = None,
-        memory: int | None = None,
-        moinp: Path | None = None,
-        strict: bool = False,
-    ) -> "OptResults":
-        single_point_result = super().run(
-            basename=basename,
-            struct=struct,
-            working_dir=working_dir,
-            ncores=ncores,
-            memory=memory,
-            moinp=moinp,
-            strict=strict,
-        )
-
-        return typing.cast(OptResults, single_point_result)
 
     @property
     def opt_threshold(self) -> SimpleKeyword | None:
@@ -157,45 +174,3 @@ class OptTask(SimpleTask):
     @opt_maxiter.setter
     def opt_maxiter(self, new_value: int | None) -> None:
         self._task_settings.opt_maxiter = new_value
-
-
-class OptResults(TaskResults):
-    """Results from a geometry optimisation."""
-
-    @property
-    def final_energy(self) -> float:
-        """
-        Energy at the optimised geometry in Hartree.
-
-        Raises
-        ------
-        ValueError
-            If the energy is not present in the ORCA output.
-        """
-        final_energy = self.output.get_final_energy()
-
-        if final_energy is None:
-            raise ValueError("Could not get final energy from ORCA Output")
-
-        return final_energy
-
-    @property
-    def structure(self) -> Structure:
-        """
-        Optimised geometry.
-
-        Raises
-        ------
-        ValueError
-            If the structure is not present in the ORCA output.
-        """
-        structure = self.output.get_structure()
-        if structure is None:
-            raise ValueError("Could not get structure from ORCA Output")
-
-        return structure
-
-    @property
-    def primary_property(self) -> tuple[float, Structure]:
-        """``(final_energy, optimised_structure)`` tuple."""
-        return self.final_energy, self.structure

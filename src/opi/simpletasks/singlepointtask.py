@@ -1,8 +1,6 @@
 import typing
-from pathlib import Path
 
 from opi.input.simple_keywords import SimpleKeyword, Solvent, Task
-from opi.input.structures import BaseStructureFile, Structure
 from opi.simpletasks.base_task import SimpleTask, TaskResults, TaskSettings
 from opi.simpletasks.method_settings import MethodSettings
 
@@ -12,56 +10,6 @@ class SinglePointSettings(TaskSettings):
 
     _name: str = "singlepoint"
     task_keyword: typing.Annotated[SimpleKeyword, Task] = Task.SP
-
-
-class SinglePointTask(SimpleTask):
-    """
-    High-level task for single-point energy calculations.
-
-    Configures ORCA with the ``SP`` keyword and returns a
-    ``SinglePointResults`` object whose ``final_energy`` attribute holds the
-    total energy in Hartree.
-    """
-
-    _task_settings: SinglePointSettings
-
-    def __init__(
-        self,
-        method: str | SimpleKeyword | None = None,
-        basis_set: str | SimpleKeyword | None = None,
-        solvation_model: str | SimpleKeyword | None = None,
-        solvent: str | Solvent | None = None,
-        task_settings: SinglePointSettings | None = None,
-        method_settings: MethodSettings | None = None,
-    ):
-        self._task_settings_type = SinglePointSettings
-        super().__init__(
-            method, basis_set, solvation_model, solvent, task_settings, method_settings
-        )
-
-        self._results_type = SinglePointResults
-
-    def run(
-        self,
-        basename: str,
-        struct: Structure | BaseStructureFile,
-        working_dir: Path = Path("RUN"),
-        ncores: int | None = None,
-        memory: int | None = None,
-        moinp: Path | None = None,
-        strict: bool = False,
-    ) -> "SinglePointResults":
-        single_point_result = super().run(
-            basename=basename,
-            struct=struct,
-            working_dir=working_dir,
-            ncores=ncores,
-            memory=memory,
-            moinp=moinp,
-            strict=strict,
-        )
-
-        return typing.cast(SinglePointResults, single_point_result)
 
 
 class SinglePointResults(TaskResults):
@@ -88,3 +36,29 @@ class SinglePointResults(TaskResults):
     def primary_property(self) -> float:
         """Alias for ``final_energy``."""
         return float(self.final_energy)
+
+
+class SinglePointTask(SimpleTask[SinglePointResults]):
+    """
+    High-level task for single-point energy calculations.
+
+    Configures ORCA with the ``SP`` keyword and returns a
+    ``SinglePointResults`` object whose ``final_energy`` attribute holds the
+    total energy in Hartree.
+    """
+
+    _task_settings: SinglePointSettings
+    _results_type = SinglePointResults
+
+    def __init__(
+        self,
+        method: str | SimpleKeyword | None = None,
+        basis_set: str | SimpleKeyword | None = None,
+        solvation_model: str | SimpleKeyword | None = None,
+        solvent: str | Solvent | None = None,
+        task_settings: SinglePointSettings | None = None,
+        method_settings: MethodSettings | None = None,
+    ):
+        super().__init__(
+            method, basis_set, solvation_model, solvent, task_settings, method_settings
+        )

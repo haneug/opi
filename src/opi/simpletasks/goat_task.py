@@ -1,10 +1,9 @@
 import typing
 from functools import cached_property
-from pathlib import Path
 
 from opi.input import Input
 from opi.input.simple_keywords import Goat, SimpleKeyword, Solvent
-from opi.input.structures import BaseStructureFile, Properties, Structure
+from opi.input.structures import Properties, Structure
 from opi.simpletasks.base_task import SimpleTask, TaskResults, TaskSettings
 from opi.simpletasks.method_settings import MethodSettings
 
@@ -42,7 +41,7 @@ class GoatSettings(TaskSettings):
         Input
             Modified ``Input`` object.
         """
-        super().map_to_input(input_object)
+        input_object = super().map_to_input(input_object)
 
         if self.goat_react:
             input_object.add_simple_keywords(Goat.GOAT_REACT)
@@ -54,55 +53,6 @@ class GoatSettings(TaskSettings):
             input_object.add_simple_keywords(Goat.GOAT_EXPLORE)
 
         return input_object
-
-
-class GoatTask(SimpleTask):
-    """
-    High-level task for GOAT conformer-ensemble explorations.
-
-    Returns a ``GoatResults`` object containing the ensemble structures and
-    their associated properties read from the ``.finalensemble.xyz`` file.
-    """
-
-    _task_settings: GoatSettings
-
-    def __init__(
-        self,
-        method: str | SimpleKeyword | None = None,
-        basis_set: str | SimpleKeyword | None = None,
-        solvation_model: str | SimpleKeyword | None = None,
-        solvent: str | Solvent | None = None,
-        task_settings: GoatSettings | None = None,
-        method_settings: MethodSettings | None = None,
-    ):
-        self._task_settings_type = GoatSettings
-        super().__init__(
-            method, basis_set, solvation_model, solvent, task_settings, method_settings
-        )
-
-        self._results_type = GoatResults
-
-    def run(
-        self,
-        basename: str,
-        struct: Structure | BaseStructureFile,
-        working_dir: Path = Path("RUN"),
-        ncores: int | None = None,
-        memory: int | None = None,
-        moinp: Path | None = None,
-        strict: bool = False,
-    ) -> "GoatResults":
-        single_point_result = super().run(
-            basename=basename,
-            struct=struct,
-            working_dir=working_dir,
-            ncores=ncores,
-            memory=memory,
-            moinp=moinp,
-            strict=strict,
-        )
-
-        return typing.cast(GoatResults, single_point_result)
 
 
 class GoatResults(TaskResults):
@@ -133,3 +83,28 @@ class GoatResults(TaskResults):
     def primary_property(self) -> tuple[list[Structure], list[Properties]]:
         """``(structures, properties)`` tuple for the final conformer ensemble."""
         return self.structures, self.properties
+
+
+class GoatTask(SimpleTask[GoatResults]):
+    """
+    High-level task for GOAT conformer-ensemble explorations.
+
+    Returns a ``GoatResults`` object containing the ensemble structures and
+    their associated properties read from the ``.finalensemble.xyz`` file.
+    """
+
+    _task_settings: GoatSettings
+    _results_type = GoatResults
+
+    def __init__(
+        self,
+        method: str | SimpleKeyword | None = None,
+        basis_set: str | SimpleKeyword | None = None,
+        solvation_model: str | SimpleKeyword | None = None,
+        solvent: str | Solvent | None = None,
+        task_settings: GoatSettings | None = None,
+        method_settings: MethodSettings | None = None,
+    ):
+        super().__init__(
+            method, basis_set, solvation_model, solvent, task_settings, method_settings
+        )

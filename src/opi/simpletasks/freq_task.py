@@ -1,9 +1,7 @@
 import typing
 from functools import cached_property
-from pathlib import Path
 
 from opi.input.simple_keywords import SimpleKeyword, Solvent, Task
-from opi.input.structures import BaseStructureFile, Structure
 from opi.simpletasks.base_task import SimpleTask, TaskResults, TaskSettings
 from opi.simpletasks.method_settings import MethodSettings
 
@@ -13,56 +11,6 @@ class FreqSettings(TaskSettings):
 
     _name: str = "freq"
     task_keyword: typing.Annotated[SimpleKeyword, Task] = Task.FREQ
-
-
-class FreqTask(SimpleTask):
-    """
-    High-level task for harmonic frequency calculations.
-
-    Returns a ``FreqResults`` object.  ``status`` is ``True`` when the job
-    terminated normally (SCF convergence is not checked separately because
-    frequency jobs always follow an SCF step).
-    """
-
-    _task_settings: FreqSettings
-
-    def __init__(
-        self,
-        method: str | SimpleKeyword | None = None,
-        basis_set: str | SimpleKeyword | None = None,
-        solvation_model: str | SimpleKeyword | None = None,
-        solvent: str | Solvent | None = None,
-        task_settings: FreqSettings | None = None,
-        method_settings: MethodSettings | None = None,
-    ):
-        self._task_settings_type = FreqSettings
-        super().__init__(
-            method, basis_set, solvation_model, solvent, task_settings, method_settings
-        )
-
-        self._results_type = FreqResults
-
-    def run(
-        self,
-        basename: str,
-        struct: Structure | BaseStructureFile,
-        working_dir: Path = Path("RUN"),
-        ncores: int | None = None,
-        memory: int | None = None,
-        moinp: Path | None = None,
-        strict: bool = False,
-    ) -> "FreqResults":
-        single_point_result = super().run(
-            basename=basename,
-            struct=struct,
-            working_dir=working_dir,
-            ncores=ncores,
-            memory=memory,
-            moinp=moinp,
-            strict=strict,
-        )
-
-        return typing.cast(FreqResults, single_point_result)
 
 
 class FreqResults(TaskResults):
@@ -94,3 +42,29 @@ class FreqResults(TaskResults):
     def primary_property(self) -> float:
         """Alias for ``free_energy_delta``."""
         return float(self.free_energy_delta)
+
+
+class FreqTask(SimpleTask[FreqResults]):
+    """
+    High-level task for harmonic frequency calculations.
+
+    Returns a ``FreqResults`` object.  ``status`` is ``True`` when the job
+    terminated normally (SCF convergence is not checked separately because
+    frequency jobs always follow an SCF step).
+    """
+
+    _task_settings: FreqSettings
+    _results_type = FreqResults
+
+    def __init__(
+        self,
+        method: str | SimpleKeyword | None = None,
+        basis_set: str | SimpleKeyword | None = None,
+        solvation_model: str | SimpleKeyword | None = None,
+        solvent: str | Solvent | None = None,
+        task_settings: FreqSettings | None = None,
+        method_settings: MethodSettings | None = None,
+    ):
+        super().__init__(
+            method, basis_set, solvation_model, solvent, task_settings, method_settings
+        )
