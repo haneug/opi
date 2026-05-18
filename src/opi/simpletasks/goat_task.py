@@ -1,9 +1,10 @@
 import typing
 from functools import cached_property
+from pathlib import Path
 
 from opi.input import Input
 from opi.input.simple_keywords import Goat, SimpleKeyword, Solvent
-from opi.input.structures import Properties, Structure
+from opi.input.structures import BaseStructureFile, Properties, Structure
 from opi.simpletasks.base_task import SimpleTask, TaskResults, TaskSettings
 from opi.simpletasks.method_settings import MethodSettings
 
@@ -80,6 +81,28 @@ class GoatTask(SimpleTask):
         )
 
         self._results_type = GoatResults
+
+    def run(
+        self,
+        basename: str,
+        struct: Structure | BaseStructureFile,
+        working_dir: Path = Path("RUN"),
+        ncores: int | None = None,
+        memory: int | None = None,
+        moinp: Path | None = None,
+        strict: bool = False,
+    ) -> "GoatResults":
+        single_point_result = super().run(
+            basename=basename,
+            struct=struct,
+            working_dir=working_dir,
+            ncores=ncores,
+            memory=memory,
+            moinp=moinp,
+            strict=strict,
+        )
+
+        return typing.cast(GoatResults, single_point_result)
 
 
 class GoatResults(TaskResults):

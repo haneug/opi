@@ -5,6 +5,7 @@ from opi.input.simple_keywords.base import (
 
 __all__ = ("Dlpno",)
 
+
 class PNOThresh(SimpleKeywordBox):
     LOOSEPNO = SimpleKeyword("loosepno")
     """SimpleKeyword: Select loose PNO settings.."""
