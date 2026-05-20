@@ -4,6 +4,7 @@ import warnings
 from abc import ABC, abstractmethod
 from functools import cached_property
 from pathlib import Path
+from typing import get_type_hints
 
 from pydantic import ConfigDict
 
@@ -61,7 +62,6 @@ class SimpleTask(ABC, typing.Generic[_RT]):
     """
 
     _results_type: type[_RT]
-    _task_settings_type: type[TaskSettings]
     _task_settings: TaskSettings
     _method_settings: MethodSettings
 
@@ -101,10 +101,11 @@ class SimpleTask(ABC, typing.Generic[_RT]):
             If neither ``method`` nor a ``method_settings`` object with a
             method is provided.
         """
+        task_settings_type = self._get_task_settings_type()
         if isinstance(task_settings, dict):
-            self._task_settings = self._task_settings_type.model_validate(task_settings)
+            self._task_settings = task_settings_type.model_validate(task_settings)
         else:
-            self._task_settings = task_settings or self._task_settings_type()  # type: ignore[call-arg]
+            self._task_settings = task_settings or task_settings_type()  # type: ignore[call-arg]
 
         resolved_method_settings: MethodSettings | None = (
             MethodSettings(**method_settings)
@@ -138,6 +139,13 @@ class SimpleTask(ABC, typing.Generic[_RT]):
                     "Either 'method' or a 'method_settings' object with a method must be provided"
                 )
             self._method_settings = resolved_method_settings
+
+    @classmethod
+    def _get_task_settings_type(cls) -> type[TaskSettings]:
+        hints = get_type_hints(cls)
+        task_setting_type = hints["_task_settings"]
+
+        return typing.cast(type[TaskSettings], task_setting_type)
 
     @property
     def task_settings(self) -> TaskSettings:
