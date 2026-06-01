@@ -4,12 +4,12 @@ from opi.input import Input
 from opi.input.blocks import BlockGeom
 from opi.input.simple_keywords import BasisSet, Dft, Goat, SimpleKeyword, Task
 from opi.input.simple_keywords.opt import Opt
-from opi.simpletasks.engrad_task import EngradTask
-from opi.simpletasks.freq_task import FreqTask
-from opi.simpletasks.goat_task import GoatSettings, GoatTask
-from opi.simpletasks.method_settings import DFTSettings, SQMSettings
-from opi.simpletasks.opt_task import OptSettings, OptTask
-from opi.simpletasks.singlepointtask import SinglePointTask
+from opi.simple_tasks import EngradTask
+from opi.simple_tasks import FreqTask
+from opi.simple_tasks import GoatSettings, GoatTask
+from opi.simple_tasks.method_settings import DftSettings, SqmSettings
+from opi.simple_tasks import OptSettings, OptTask
+from opi.simple_tasks import SinglePointTask
 
 """
 Unit tests for SimpleTask subclasses and TaskSettings:
@@ -41,8 +41,8 @@ def test_simple_task_no_method_raises() -> None:
 @pytest.mark.parametrize(
     "method,expected_cls",
     [
-        ("pbe", DFTSettings),
-        ("gfn2-xtb", SQMSettings),
+        ("pbe", DftSettings),
+        ("gfn2-xtb", SqmSettings),
     ],
 )
 def test_simple_task_method_dispatch(method: str, expected_cls: type) -> None:
@@ -56,7 +56,7 @@ def test_simple_task_method_dispatch(method: str, expected_cls: type) -> None:
 def test_simple_task_dict_method_settings() -> None:
     """A plain dict passed as method_settings is validated and dispatched correctly."""
     task = SinglePointTask(method_settings={"method": "pbe"})
-    assert isinstance(task.method_settings, DFTSettings)
+    assert isinstance(task.method_settings, DftSettings)
 
 
 @pytest.mark.unit
@@ -201,7 +201,7 @@ def test_method_switch_same_family_updates_in_place() -> None:
     """Switching to a method in the same family updates the existing settings object."""
     task = SinglePointTask(method="pbe")
     task.method = "tpss"
-    assert isinstance(task.method_settings, DFTSettings)
+    assert isinstance(task.method_settings, DftSettings)
     assert task.method == Dft.TPSS
 
 
@@ -209,10 +209,10 @@ def test_method_switch_same_family_updates_in_place() -> None:
 @pytest.mark.simpletasks
 def test_method_switch_cross_family_warns_about_dropped_fields() -> None:
     """Switching method family warns about settings fields that cannot be transferred."""
-    task = SinglePointTask(method_settings=DFTSettings(method="pbe", scf_maxiter=500))
+    task = SinglePointTask(method_settings=DftSettings(method="pbe", scf_maxiter=500))
     with pytest.warns(UserWarning, match="scf_maxiter"):
         task.method = "gfn2-xtb"
-    assert isinstance(task.method_settings, SQMSettings)
+    assert isinstance(task.method_settings, SqmSettings)
 
 
 # ---------------------------------------------------------------------------

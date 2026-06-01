@@ -5,11 +5,11 @@ from opi.input import Input
 from opi.input.blocks import BlockScf
 from opi.input.simple_keywords import BasisSet, Dft
 from opi.input.simple_keywords.scf import Scf
-from opi.simpletasks.method_settings import (
-    DFTSettings,
+from opi.simple_tasks.method_settings import (
+    DftSettings,
     ForceFieldSettings,
     MethodSettings,
-    SQMSettings,
+    SqmSettings,
     WftSettings,
 )
 
@@ -17,7 +17,7 @@ from opi.simpletasks.method_settings import (
 Unit tests for MethodSettings and its subclasses:
 - Dispatcher (__new__) routing by method keyword
 - resolve_method_settings_type classmethod
-- DFTSettings compound keyword parsing (e.g. "PBE-D3BJ")
+- DftSettings compound keyword parsing (e.g. "PBE-D3BJ")
 - 3c method / ForceField cross-validation dropping basis_set
 - scf_stab flag adding SCFSTAB keyword
 - Settings merge operator (|)
@@ -30,8 +30,8 @@ Unit tests for MethodSettings and its subclasses:
 @pytest.mark.parametrize(
     "method,expected_cls",
     [
-        ("pbe", DFTSettings),
-        ("gfn2-xtb", SQMSettings),
+        ("pbe", DftSettings),
+        ("gfn2-xtb", SqmSettings),
         ("ccsd(t)", WftSettings),
         ("hf", WftSettings),
         ("gfn-ff", ForceFieldSettings),
@@ -48,8 +48,8 @@ def test_method_settings_dispatch(method: str, expected_cls: type) -> None:
 @pytest.mark.parametrize(
     "method,expected_cls",
     [
-        ("pbe", DFTSettings),
-        ("gfn2-xtb", SQMSettings),
+        ("pbe", DftSettings),
+        ("gfn2-xtb", SqmSettings),
         ("ccsd(t)", WftSettings),
         ("gfn-ff", ForceFieldSettings),
     ],
@@ -62,8 +62,8 @@ def test_resolve_method_settings_type(method: str, expected_cls: type) -> None:
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_dft_compound_keyword_parsed() -> None:
-    """DFTSettings accepts 'Functional-Dispersion' compound strings like 'PBE-D3BJ'."""
-    s = DFTSettings(method="PBE-D3BJ")
+    """DftSettings accepts 'Functional-Dispersion' compound strings like 'PBE-D3BJ'."""
+    s = DftSettings(method="PBE-D3BJ")
     assert s.method is not None
     assert s.method.keyword.lower() == "pbe-d3bj"
 
@@ -71,9 +71,9 @@ def test_dft_compound_keyword_parsed() -> None:
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_dft_invalid_compound_keyword_raises() -> None:
-    """DFTSettings raises ValidationError for unrecognised compound method strings."""
+    """DftSettings raises ValidationError for unrecognised compound method strings."""
     with pytest.raises(ValidationError):
-        DFTSettings(method="INVALID-NOTADISP")
+        DftSettings(method="INVALID-NOTADISP")
 
 
 @pytest.mark.unit
@@ -81,7 +81,7 @@ def test_dft_invalid_compound_keyword_raises() -> None:
 def test_dft_3c_method_drops_basis_set_with_warning() -> None:
     """3c composite methods silently drop basis_set (they carry their own basis internally)."""
     with pytest.warns(UserWarning):
-        s = DFTSettings(method="r2scan-3c", basis_set="def2-svp")
+        s = DftSettings(method="r2scan-3c", basis_set="def2-svp")
     assert s.basis_set is None
 
 
@@ -97,8 +97,8 @@ def test_forcefield_drops_basis_set_with_warning() -> None:
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_dft_scf_stab_adds_scfstab_keyword() -> None:
-    """DFTSettings with scf_stab=True adds the SCFSTAB keyword to the input."""
-    s = DFTSettings(method="pbe", scf_stab=True)
+    """DftSettings with scf_stab=True adds the SCFSTAB keyword to the input."""
+    s = DftSettings(method="pbe", scf_stab=True)
     inp = s.map_to_input(Input())
     assert inp.has_simple_keywords(Scf.SCFSTAB) == (True,)
 
@@ -106,8 +106,8 @@ def test_dft_scf_stab_adds_scfstab_keyword() -> None:
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_dft_scf_stab_false_no_scfstab_keyword() -> None:
-    """DFTSettings with scf_stab=False (default) does not add SCFSTAB."""
-    s = DFTSettings(method="pbe")
+    """DftSettings with scf_stab=False (default) does not add SCFSTAB."""
+    s = DftSettings(method="pbe")
     inp = s.map_to_input(Input())
     assert inp.has_simple_keywords(Scf.SCFSTAB) == (False,)
 
@@ -116,8 +116,8 @@ def test_dft_scf_stab_false_no_scfstab_keyword() -> None:
 @pytest.mark.simpletasks
 def test_settings_merge_right_wins_left_preserved() -> None:
     """Settings | other: right-hand fields override, unset left-hand fields are preserved."""
-    s1 = DFTSettings(method="pbe", basis_set="def2-svp")
-    s2 = DFTSettings(method="tpss")
+    s1 = DftSettings(method="pbe", basis_set="def2-svp")
+    s2 = DftSettings(method="tpss")
     merged_settings = s1 | s2
     assert merged_settings.method == Dft.TPSS
     assert merged_settings.basis_set == BasisSet.DEF2_SVP
@@ -127,8 +127,8 @@ def test_settings_merge_right_wins_left_preserved() -> None:
 @pytest.mark.simpletasks
 def test_settings_merge_right_overrides_both() -> None:
     """Settings | other: right-hand basis_set overrides left-hand basis_set."""
-    s1 = DFTSettings(method="pbe", basis_set="def2-svp")
-    s2 = DFTSettings(method="tpss", basis_set="def2-tzvp")
+    s1 = DftSettings(method="pbe", basis_set="def2-svp")
+    s2 = DftSettings(method="tpss", basis_set="def2-tzvp")
     merged = s1 | s2
     assert merged.method == Dft.TPSS
     assert merged.basis_set == BasisSet.DEF2_TZVP
@@ -137,9 +137,9 @@ def test_settings_merge_right_overrides_both() -> None:
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_dft_invalid_field_raises_validation_error() -> None:
-    """DFTSettings rejects unknown fields with a clear ValidationError."""
+    """DftSettings rejects unknown fields with a clear ValidationError."""
     with pytest.raises(ValidationError):
-        DFTSettings(method="pbe", invalid_field="x")  # type: ignore[call-arg]
+        DftSettings(method="pbe", invalid_field="x")  # type: ignore[call-arg]
 
 
 @pytest.mark.unit
@@ -157,7 +157,7 @@ def test_string_fields_converted_to_simple_keyword(
     field: str, text_value: str, expected_kw: object
 ) -> None:
     """String field values are validated and converted to the matching SimpleKeyword (case-insensitively)."""
-    s = DFTSettings(**{field: text_value})  # type: ignore[arg-type]
+    s = DftSettings(**{field: text_value})  # type: ignore[arg-type]
     assert getattr(s, field) == expected_kw
 
 
@@ -166,8 +166,8 @@ def test_string_fields_converted_to_simple_keyword(
 @pytest.mark.parametrize(
     "settings_cls,settings_kwargs,field,value,block_attr",
     [
-        (DFTSettings, {"method": "pbe", "scf_maxiter": 300}, "scf_maxiter", 300, "maxiter"),
-        (SQMSettings, {"method": "gfn2-xtb", "scf_maxiter": 500}, "scf_maxiter", 500, "maxiter"),
+        (DftSettings, {"method": "pbe", "scf_maxiter": 300}, "scf_maxiter", 300, "maxiter"),
+        (SqmSettings, {"method": "gfn2-xtb", "scf_maxiter": 500}, "scf_maxiter", 500, "maxiter"),
     ],
 )
 def test_block_option_stored_and_mapped(

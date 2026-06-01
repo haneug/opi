@@ -4,8 +4,8 @@ from unittest.mock import patch
 import pytest
 
 from opi.input.simple_keywords import SimpleKeyword
-from opi.simpletasks.freq_task import FreqResults, FreqTask
-from opi.simpletasks.singlepointtask import SinglePointResults, SinglePointTask
+from opi.simple_tasks import FreqResults, FreqTask
+from opi.simple_tasks import SinglePointResults, SinglePointTask
 
 """
 Unit tests for SimpleTask.from_string classmethod:
