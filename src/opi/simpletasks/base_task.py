@@ -157,12 +157,17 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         """Method-level settings (functional, basis set, solvent, …)."""
         return self._method_settings
 
-    @property
+    @cached_property
     def input_object(self) -> Input:
         """
         Creates configured `Input` object. First it initializes an empty instance of `Input` , and then passes it as
         to corresponding `TaskSettings` and `MethodSettings` objects to be configured by user-defined data stored in those
         objects.
+
+        The result is cached — the same `Input` instance is returned on every access, so mutations
+        (e.g. ``task.input_object.add_simple_keywords(...)``) persist and are included when ``run()`` is called.
+        To reset the cache after changing ``task_settings`` or ``method_settings``, delete the attribute:
+        ``del task.input_object``.
 
         Returns
         -------
@@ -304,9 +309,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         Run a calculation from a raw ORCA keyword string.
 
         Bypasses the typed ``TaskSettings``/``MethodSettings`` API and feeds
-        keywords directly into the input file.  Useful as an escape hatch when
-        the desired keyword combination is not yet covered by the settings
-        classes.
+        keywords directly into the input file.
 
         Parameters
         ----------

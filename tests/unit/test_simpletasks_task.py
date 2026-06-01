@@ -229,3 +229,26 @@ def test_basis_set_getter_and_setter() -> None:
 
     task.basis_set = "def2-tzvp"
     assert task.basis_set == BasisSet.DEF2_TZVP
+
+
+# ---------------------------------------------------------------------------
+# input_object caching
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_input_object_is_cached() -> None:
+    """Accessing input_object twice returns the same object instance."""
+    task = SinglePointTask(method="pbe")
+    assert task.input_object is task.input_object
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_input_object_mutation_persists() -> None:
+    """Keywords added to input_object are present on the next access."""
+    task = SinglePointTask(method="pbe")
+    kw = SimpleKeyword("RIJCOSX")
+    task.input_object.add_simple_keywords(kw)
+    assert task.input_object.has_simple_keywords(kw) == (True,)
