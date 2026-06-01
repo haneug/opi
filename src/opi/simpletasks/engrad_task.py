@@ -16,23 +16,6 @@ class EngradResults(TaskResults):
     """Results from an energy + gradient calculation."""
 
     @property
-    def final_energy(self) -> float:
-        """
-        Total energy in Hartree.
-
-        Raises
-        ------
-        ValueError
-            If the energy is not present in the ORCA output.
-        """
-        final_energy = self.output.get_final_energy()
-
-        if final_energy is None:
-            raise ValueError("Could not get final energy from ORCA Output")
-
-        return final_energy
-
-    @property
     def gradient(self) -> list[float]:
         """
         Cartesian gradient vector in Hartree/Bohr (flattened, atom-major order).
@@ -57,7 +40,7 @@ class EngradResults(TaskResults):
 
 class EngradTask(SimpleTask[EngradResults]):
     """
-    High-level task for single-point energy and gradient calculations.
+    Task for single-point energy and gradient calculations.
 
     Returns an ``EngradResults`` object containing the total energy and
     the Cartesian gradient vector.

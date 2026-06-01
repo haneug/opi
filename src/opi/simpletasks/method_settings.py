@@ -120,7 +120,7 @@ class MethodSettings(Settings):
         raise ValueError(f"Keyword {method} not found in any of the valid groupings")
 
 
-class DFTSettings(MethodSettings):
+class DftSettings(MethodSettings):
     """
     Method settings for DFT calculations.
 
@@ -249,7 +249,7 @@ class DFTSettings(MethodSettings):
             raise ValueError(f"Invalid Dft keyword '{value}'")
 
 
-class SQMSettings(MethodSettings):
+class SqmSettings(MethodSettings):
     """
     Method settings for semi-empirical (SQM) calculations.
 

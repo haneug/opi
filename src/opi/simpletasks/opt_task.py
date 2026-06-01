@@ -66,23 +66,6 @@ class OptResults(TaskResults):
     """Results from a geometry optimisation."""
 
     @property
-    def final_energy(self) -> float:
-        """
-        Energy at the optimised geometry in Hartree.
-
-        Raises
-        ------
-        ValueError
-            If the energy is not present in the ORCA output.
-        """
-        final_energy = self.output.get_final_energy()
-
-        if final_energy is None:
-            raise ValueError("Could not get final energy from ORCA Output")
-
-        return final_energy
-
-    @property
     def structure(self) -> Structure:
         """
         Optimised geometry.

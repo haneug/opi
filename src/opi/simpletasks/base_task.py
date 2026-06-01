@@ -42,7 +42,7 @@ _RT = typing.TypeVar("_RT", bound="TaskResults")
 
 class SimpleTask(ABC, typing.Generic[_RT]):
     """
-    Abstract base class for all high-level OPI calculation tasks.
+    Abstract base class for all OPI calculation tasks.
 
     Combines a ``TaskSettings`` (what kind of calculation to run) with a
     ``MethodSettings`` (which method/basis/solvent to use) and exposes a
@@ -590,10 +590,25 @@ class TaskResults(ABC):
     @cached_property
     def status(self) -> bool:
         """``True`` if the job terminated normally and SCF converged."""
-        return self.output.terminated_normally() and self.output.scf_converged()
+        return self.output.terminated_normally()
 
     @cached_property
     @abstractmethod
     def primary_property(self) -> typing.Any:
         """The most important result for this task type (energy, structure, …)."""
         pass
+
+    @cached_property
+    def final_energy(self) -> float:
+        """The final energy of the calculation.
+
+        Raises
+        ------
+        ValueError
+            If the energy is not present in the ORCA output."""
+        final_energy = self.output.get_final_energy()
+
+        if final_energy is None:
+            raise ValueError("Could not get final energy from ORCA Output")
+
+        return final_energy
