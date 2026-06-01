@@ -4,10 +4,10 @@ from pathlib import Path
 
 from opi.input.structures import Structure
 from opi.output.ir_mode import IrMode
-from opi.simpletasks.freq_task import FreqResults, FreqTask
+from opi.simple_tasks.freq_task import FreqResults, FreqTask
 
 
-def run_exmp056(structure: Structure | None = None, working_dir: Path = Path("RUN")) -> FreqResults:
+def run_exmp057(structure: Structure | None = None, working_dir: Path = Path("RUN")) -> FreqResults:
     # > if no structure is given read structure from inp.xyz
     if structure is None:
         structure = Structure.from_xyz("inp.xyz")
@@ -48,4 +48,4 @@ def run_exmp056(structure: Structure | None = None, working_dir: Path = Path("RU
 
 
 if __name__ == "__main__":
-    run_exmp056()
+    run_exmp057()

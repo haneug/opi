@@ -4,10 +4,10 @@ import sys
 from pathlib import Path
 
 from opi.input.structures import Properties, Structure
-from opi.simpletasks.goat_task import GoatSettings, GoatTask
+from opi.simple_tasks.goat_task import GoatSettings, GoatTask
 
 
-def run_exmp055(
+def run_exmp058(
     structure: Structure | None = None, working_dir: Path = Path("RUN")
 ) -> tuple[list[Structure], list[Properties]]:
 
@@ -36,4 +36,4 @@ def run_exmp055(
 
 
 if __name__ == "__main__":
-    run_exmp055()
+    run_exmp058()

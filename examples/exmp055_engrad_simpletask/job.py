@@ -3,10 +3,10 @@ import sys
 from pathlib import Path
 
 from opi.input.structures import Structure
-from opi.simpletasks.engrad_task import EngradResults, EngradTask
+from opi.simple_tasks.engrad_task import EngradResults, EngradTask
 
 
-def run_exmp058(
+def run_exmp055(
     structure: Structure | None = None, working_dir: Path = Path("RUN")
 ) -> EngradResults:
     # > if no structure is given read structure from inp.xyz
@@ -29,4 +29,4 @@ def run_exmp058(
 
 
 if __name__ == "__main__":
-    run_exmp058()
+    run_exmp055()
