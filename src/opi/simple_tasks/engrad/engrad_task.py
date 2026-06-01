@@ -1,8 +1,8 @@
 import typing
 
 from opi.input.simple_keywords import SimpleKeyword, Solvent, Task
-from opi.simple_tasks.simple_task import SimpleTask, TaskResults, TaskSettings
 from opi.simple_tasks.method_settings import MethodSettings
+from opi.simple_tasks.simple_task import SimpleTask, TaskResults, TaskSettings
 
 
 class EngradSettings(TaskSettings):

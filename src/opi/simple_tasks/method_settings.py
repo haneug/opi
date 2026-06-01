@@ -162,7 +162,7 @@ class DftSettings(MethodSettings):
             return super().validate_fields(value, info)
 
     @model_validator(mode="after")
-    def cross_validate(self) -> "DFTSettings":
+    def cross_validate(self) -> "DftSettings":
         """
         Cross-validation for `DftSettings`.
         If the method keyword contains '3c', the `basis_set` attribute will be set to `None`.

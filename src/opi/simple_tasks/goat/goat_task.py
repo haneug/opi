@@ -4,8 +4,8 @@ from functools import cached_property
 from opi.input import Input
 from opi.input.simple_keywords import Goat, SimpleKeyword, Solvent
 from opi.input.structures import Properties, Structure
-from opi.simple_tasks.simple_task import SimpleTask, TaskResults, TaskSettings
 from opi.simple_tasks.method_settings import MethodSettings
+from opi.simple_tasks.simple_task import SimpleTask, TaskResults, TaskSettings
 
 
 class GoatSettings(TaskSettings):

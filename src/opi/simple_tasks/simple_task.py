@@ -164,8 +164,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         to corresponding `TaskSettings` and `MethodSettings` objects to be configured by user-defined data stored in those
         objects.
 
-        The result is cached — the same `Input` instance is returned on every access, so mutations
-        (e.g. ``task.input_object.add_simple_keywords(...)``) persist and are included when ``run()`` is called.
+        The result is cached — the same `Input` instance is returned on every access, so mutations persist and are included when ``run()`` is called.
         To reset the cache after changing ``task_settings`` or ``method_settings``, delete the attribute:
         ``del task.input_object``.
 

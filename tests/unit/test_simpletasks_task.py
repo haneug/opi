@@ -4,12 +4,16 @@ from opi.input import Input
 from opi.input.blocks import BlockGeom
 from opi.input.simple_keywords import BasisSet, Dft, Goat, SimpleKeyword, Task
 from opi.input.simple_keywords.opt import Opt
-from opi.simple_tasks import EngradTask
-from opi.simple_tasks import FreqTask
-from opi.simple_tasks import GoatSettings, GoatTask
+from opi.simple_tasks import (
+    EngradTask,
+    FreqTask,
+    GoatSettings,
+    GoatTask,
+    OptSettings,
+    OptTask,
+    SinglePointTask,
+)
 from opi.simple_tasks.method_settings import DftSettings, SqmSettings
-from opi.simple_tasks import OptSettings, OptTask
-from opi.simple_tasks import SinglePointTask
 
 """
 Unit tests for SimpleTask subclasses and TaskSettings:
