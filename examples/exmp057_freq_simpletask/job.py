@@ -4,7 +4,7 @@ from pathlib import Path
 
 from opi.input.structures import Structure
 from opi.output.ir_mode import IrMode
-from opi.simple_tasks.freq_task import FreqResults, FreqTask
+from opi.simple_tasks import FreqResults, FreqTask
 
 
 def run_exmp057(structure: Structure | None = None, working_dir: Path = Path("RUN")) -> FreqResults:

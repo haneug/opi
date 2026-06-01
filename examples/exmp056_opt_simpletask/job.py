@@ -4,7 +4,7 @@ from pathlib import Path
 
 from opi.input.structures import Structure
 from opi.simple_tasks.method_settings import DftSettings
-from opi.simple_tasks.opt_task import OptResults, OptSettings, OptTask
+from opi.simple_tasks import OptResults, OptSettings, OptTask
 
 
 def run_exmp056(structure: Structure | None = None, working_dir: Path = Path("RUN")) -> OptResults:

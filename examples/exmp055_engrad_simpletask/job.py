@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from opi.input.structures import Structure
-from opi.simple_tasks.engrad_task import EngradResults, EngradTask
+from opi.simple_tasks import EngradResults, EngradTask
 
 
 def run_exmp055(

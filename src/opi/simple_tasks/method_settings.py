@@ -104,8 +104,8 @@ class MethodSettings(Settings):
         """
 
         enum_to_settings = {
-            Dft: DFTSettings,
-            Sqm: SQMSettings,
+            Dft: DftSettings,
+            Sqm: SqmSettings,
             Wft: WftSettings,
             Method: HFSettings,
             ForceField: ForceFieldSettings,

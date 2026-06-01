@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from opi.input.structures import Properties, Structure
-from opi.simple_tasks.goat_task import GoatSettings, GoatTask
+from opi.simple_tasks import GoatSettings, GoatTask
 
 
 def run_exmp058(
