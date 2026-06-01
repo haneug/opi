@@ -21,7 +21,7 @@ from opi.input.simple_keywords import (
 )
 from opi.input.simple_keywords.dlpno import Dlpno, PNOThresh
 from opi.input.simple_keywords.scf import Scf, ScfConvergence, ScfSolver, ScfThreshold
-from opi.simpletasks.settings import Settings
+from opi.simple_tasks.settings import Settings
 
 
 class MethodSettings(Settings):

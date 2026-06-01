@@ -17,8 +17,8 @@ from opi.input.simple_keywords import (
 )
 from opi.input.structures import BaseStructureFile, Structure
 from opi.output.core import Output
-from opi.simpletasks.method_settings import MethodSettings
-from opi.simpletasks.settings import Settings
+from opi.simple_tasks.method_settings import MethodSettings
+from opi.simple_tasks.settings import Settings
 
 
 class TaskSettings(Settings):
