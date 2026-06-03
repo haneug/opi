@@ -184,7 +184,7 @@ class Block(BaseModel, ABC):
 
         """
         new_block = self.__class__.model_validate(
-            {**self.model_dump(), **other.model_dump(exclude_unset=True)}
+            {**self.model_dump(exclude_none=True), **other.model_dump(exclude_unset=True)}
         )
         return new_block
 

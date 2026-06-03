@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 
 from opi.input import Input
@@ -275,11 +273,20 @@ def test_user_added_block_persists() -> None:
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
-def test_user_modified_block_persists() -> None:
-    """Mutating an existing block on input_object is reflected on every subsequent access."""
+def test_settings_win_over_user_block_modification() -> None:
+    """Settings-controlled block fields overwrite user modifications on every access."""
     task = OptTask(method="pbe", task_settings={"opt_maxiter": 50})
-    task.input_object.blocks[BlockGeom].maxiter = 99
-    assert task.input_object.blocks[BlockGeom].maxiter == 99
+    task.input_object.blocks[BlockGeom].maxiter = 99  # mutate after first access
+    assert task.input_object.blocks[BlockGeom].maxiter == 50
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_settings_keyword_restored_after_user_removal() -> None:
+    """A settings-controlled keyword removed from _input_object is re-added on the next access."""
+    task = SinglePointTask(method="pbe", basis_set="def2-svp")
+    task._input_object.remove_simple_keywords(BasisSet.DEF2_SVP)
+    assert task.input_object.has_simple_keywords(BasisSet.DEF2_SVP) == (True,)
 
 
 @pytest.mark.unit

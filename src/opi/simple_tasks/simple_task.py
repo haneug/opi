@@ -64,6 +64,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
     _results_type: type[_RT]
     _task_settings: TaskSettings
     _method_settings: MethodSettings
+    _input_object: Input
 
     def __init__(
         self,
@@ -140,6 +141,8 @@ class SimpleTask(ABC, typing.Generic[_RT]):
                 )
             self._method_settings = resolved_method_settings
 
+        self._input_object: Input = Input()
+
     @classmethod
     def _get_task_settings_type(cls) -> type[TaskSettings]:
         hints = get_type_hints(cls)
@@ -157,27 +160,30 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         """Method-level settings (functional, basis set, solvent, …)."""
         return self._method_settings
 
-    @cached_property
+    @property
     def input_object(self) -> Input:
         """
-        Creates configured `Input` object. First it initializes an empty instance of `Input` , and then passes it as
-        to corresponding `TaskSettings` and `MethodSettings` objects to be configured by user-defined data stored in those
-        objects.
+        Returns the ``Input`` object for this task, with ``task_settings`` and
+        ``method_settings`` applied on top of any user modifications.
 
-        The result is cached — the same `Input` instance is returned on every access, so mutations persist and are included when ``run()`` is called.
-        To reset the cache after changing ``task_settings`` or ``method_settings``, delete the attribute:
-        ``del task.input_object``.
+        Settings are re-applied on every access so they always take precedence
+        over manual edits to the same fields.  Additions that settings do not
+        control (extra keywords, ``ncores``, arbitrary strings, …) are
+        preserved across accesses because the same ``Input`` instance is reused.
 
         Returns
         -------
-        `Input`
-            `Input` object configured by user-defined data.
-
+        Input
+            The task's ``Input`` object, ready for inspection or further
+            user customisation before calling ``run()``.
         """
-        inp = Input()
-        inp = self._task_settings.map_to_input(input_object=inp)
-        inp = self.method_settings.map_to_input(input_object=inp)
-        return inp
+        self._task_settings.map_to_input(self._input_object)
+        self.method_settings.map_to_input(self._input_object)
+        return self._input_object
+
+    @input_object.setter
+    def input_object(self, value: Input) -> None:
+        self._input_object = value
 
     @property
     def keyword(self) -> SimpleKeyword:
