@@ -1,6 +1,3 @@
-from opi.simple_tasks.engrad.engrad_task import EngradResults, EngradSettings, EngradTask
-from opi.simple_tasks.freq.freq_task import FreqResults, FreqSettings, FreqTask
-from opi.simple_tasks.goat.goat_task import GoatResults, GoatSettings, GoatTask
 from opi.simple_tasks.method_settings import (
     DftSettings,
     DlpnoCcSettings,
@@ -10,9 +7,20 @@ from opi.simple_tasks.method_settings import (
     SqmSettings,
     WftSettings,
 )
-from opi.simple_tasks.opt.opt_task import OptResults, OptSettings, OptTask
 from opi.simple_tasks.simple_task import SimpleTask, TaskResults, TaskSettings
-from opi.simple_tasks.single_point.single_point_task import (
+from opi.simple_tasks.tasks import (
+    EngradResults,
+    EngradSettings,
+    EngradTask,
+    FreqResults,
+    FreqSettings,
+    FreqTask,
+    GoatResults,
+    GoatSettings,
+    GoatTask,
+    OptResults,
+    OptSettings,
+    OptTask,
     SinglePointResults,
     SinglePointSettings,
     SinglePointTask,
