@@ -1,7 +1,10 @@
+from pathlib import Path
+
 import pytest
 
 from opi.input import Input
-from opi.input.blocks import BlockGeom
+from opi.input.arbitrary_string import ArbitraryStringPos
+from opi.input.blocks import BlockGeom, BlockScf
 from opi.input.simple_keywords import BasisSet, Dft, Goat, SimpleKeyword, Task
 from opi.input.simple_keywords.opt import Opt
 from opi.simple_tasks import (
@@ -250,9 +253,77 @@ def test_input_object_is_cached() -> None:
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
-def test_input_object_mutation_persists() -> None:
-    """Keywords added to input_object are present on the next access."""
+def test_user_added_keyword_persists() -> None:
+    """A keyword added directly to input_object is visible on every subsequent access."""
     task = SinglePointTask(method="pbe")
-    kw = SimpleKeyword("RIJCOSX")
+    kw = SimpleKeyword("NORI")
     task.input_object.add_simple_keywords(kw)
     assert task.input_object.has_simple_keywords(kw) == (True,)
+    assert task.input_object.has_simple_keywords(kw) == (True,)
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_user_added_block_persists() -> None:
+    """A block added directly to input_object is visible on every subsequent access."""
+    task = SinglePointTask(method="pbe")
+    block = BlockScf(maxiter=500)
+    task.input_object.add_blocks(block)
+    assert task.input_object.has_blocks(BlockScf()) == (True,)
+    assert task.input_object.blocks[BlockScf].maxiter == 500
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_user_modified_block_persists() -> None:
+    """Mutating an existing block on input_object is reflected on every subsequent access."""
+    task = OptTask(method="pbe", task_settings={"opt_maxiter": 50})
+    task.input_object.blocks[BlockGeom].maxiter = 99
+    assert task.input_object.blocks[BlockGeom].maxiter == 99
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_user_set_ncores_persists() -> None:
+    """Setting ncores on input_object is preserved across accesses."""
+    task = SinglePointTask(method="pbe")
+    task.input_object.ncores = 8
+    assert task.input_object.ncores == 8
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_user_set_memory_persists() -> None:
+    """Setting memory on input_object is preserved across accesses."""
+    task = SinglePointTask(method="pbe")
+    task.input_object.memory = 4096
+    assert task.input_object.memory == 4096
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_user_added_arbitrary_string_persists() -> None:
+    """An arbitrary string added to input_object is preserved across accesses."""
+    task = SinglePointTask(method="pbe")
+    task.input_object.add_arbitrary_string("% some custom block\nend", pos=ArbitraryStringPos.BOTTOM)
+    assert len(task.input_object.arbitrary_strings) == 1
+    assert len(task.input_object.arbitrary_strings) == 1
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_multiple_user_modifications_all_persist() -> None:
+    """Multiple independent modifications to input_object all survive repeated accesses."""
+    task = SinglePointTask(method="pbe")
+    kw = SimpleKeyword("RIJCOSX")
+    block = BlockScf(maxiter=300)
+
+    task.input_object.add_simple_keywords(kw)
+    task.input_object.add_blocks(block)
+    task.input_object.ncores = 4
+
+    inp = task.input_object
+    assert inp.has_simple_keywords(kw) == (True,)
+    assert inp.has_blocks(BlockScf()) == (True,)
+    assert inp.blocks[BlockScf].maxiter == 300
+    assert inp.ncores == 4

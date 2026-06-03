@@ -2,6 +2,7 @@
 import sys
 from pathlib import Path
 
+from opi.input.simple_keywords import AtomicCharge
 from opi.input.structures import Structure
 from opi.simple_tasks import SinglePointResults, SinglePointTask
 
@@ -18,6 +19,9 @@ def run_exmp054(
         method="b3lyp", basis_set="def2-svp", solvation_model="cpcm", solvent="water"
     )
     # > there are task and method-specific settings, these can be set through kwargs
+
+    # > It is possible to modify the input object associated with the task object for more specific settings
+    simple_task.input_object.add_simple_keywords(AtomicCharge.HIRSHFELD)
 
     # > run the calculation with given data
     singlepoint_result = simple_task.run("job", structure, working_dir=working_dir)
