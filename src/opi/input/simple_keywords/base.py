@@ -3,15 +3,11 @@ __all__ = ("SimpleKeyword", "SimpleKeywordBox")
 
 class SimpleKeywordBox:
     """
-    Registry base class for groups of related ``SimpleKeyword`` constants.
+    Base class for groups of related ``SimpleKeyword`` constants.
 
     Each concrete subclass (e.g. ``Task``, ``Dft``, ``BasisSet``) declares its
-    members as class-level ``SimpleKeyword`` attributes.  Subclassing
-    automatically registers the new class so that ``from_string`` can search
-    across all members in the group.
+    members as class-level ``SimpleKeyword`` attributes.
     """
-
-    _registry: list[type["SimpleKeywordBox"]] = []
 
     @classmethod
     def from_string(cls, s: str) -> "SimpleKeyword":
@@ -32,21 +28,23 @@ class SimpleKeywordBox:
         # The simple keywords are structured such that, for example, the larger `Scf` grouping is a child class of the semantically smaller groupings,
         # such as `ScfConvergence`, `ScfThreshold` and so on.
         for attr in dir(cls):
-            value = getattr(cls, attr)
+            # Get the value associated with attribute
+            simple_keyword = getattr(cls, attr)
             if attr.startswith("_") or not isinstance(
-                value, SimpleKeyword
+                simple_keyword, SimpleKeyword
             ):  # Skip private/magic attributes or non-Simple Keyword attributes
                 continue
             # Case 1: if the user searches for keyword through how it would appear in ORCA input
-            if value.keyword.lower() == norm:
-                return value
+            if simple_keyword.keyword.lower() == norm:
+                return simple_keyword
             # Case 2: if the user searches for keyword through how it is stored in OPI
             elif attr.lower() == norm:
-                return value
+                return simple_keyword
             # Case 3: if the user searches for keyword through a known alias
-            elif value.alias and value.alias.lower() == norm:
-                return value
+            elif simple_keyword.alias and any(a.lower() == norm for a in simple_keyword.alias):
+                return simple_keyword
 
+        # In the case that no matches are found, raise ValueError
         raise ValueError(f"Keyword {s} not found in class {cls.__name__}")
 
     @classmethod
@@ -63,6 +61,7 @@ class SimpleKeywordBox:
             If ``inp`` is not a str or SimpleKeyword, or if the string is not
             found in the registry.
         """
+        # If input is SimpleKeyword, convert to string representation
         if isinstance(inp, SimpleKeyword):
             inp = inp.keyword
 
@@ -85,13 +84,14 @@ class SimpleKeyword:
     ----------
     keyword : str
         The keyword string as it will appear in the ORCA ``.inp`` file.
-    alias : str or None
-        Optional alternative name accepted by ``SimpleKeywordBox.from_string``.
+    alias : list[str] | None
+        Optional alternative name(s) accepted by ``SimpleKeywordBox.from_string``.
     """
 
-    alias: str | None = None
+    _keyword: str
+    alias: list[str] | None = None
 
-    def __init__(self, keyword: str, alias: str | None = None) -> None:
+    def __init__(self, keyword: str, alias: str | list[str] | None = None) -> None:
         """
         Parameters
         ----------
@@ -101,10 +101,8 @@ class SimpleKeyword:
         alias : str, optional
             Alternative lookup name for ``SimpleKeywordBox.from_string``.
         """
-        self._keyword: str = ""
         self.keyword = keyword
-        self._name: str = ""
-        self.alias = alias
+        self.alias = [alias] if isinstance(alias, str) else alias
 
     @property
     def keyword(self) -> str:
@@ -126,27 +124,6 @@ class SimpleKeyword:
                 f"{self.__class__.__name__}.keyword: must contain more than just whitespaces!"
             )
         self._keyword = value
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @name.setter
-    def name(self, value: str) -> None:
-        """
-        Parameters
-        ----------
-        value : str
-        """
-        if not isinstance(value, str):
-            raise TypeError(f"{self.__class__.__name__}.name: must be of type str!")
-        # > Stripping trailing whitespaces
-        value = value.rstrip()
-        if not value:
-            raise ValueError(
-                f"{self.__class__.__name__}.name: must contain more than just whitespaces!"
-            )
-        self._name = value
 
     def format_orca(self) -> str:
         """
