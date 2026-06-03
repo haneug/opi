@@ -1,7 +1,5 @@
 __all__ = ("SimpleKeyword", "SimpleKeywordBox")
 
-from typing import Any
-
 
 class SimpleKeywordBox:
     """
@@ -14,21 +12,6 @@ class SimpleKeywordBox:
     """
 
     _registry: list[type["SimpleKeywordBox"]] = []
-
-    def __init_subclass__(cls, **kwargs: Any) -> None:
-        super().__init_subclass__(**kwargs)
-        cls._registry = []
-
-        for base in cls.__bases__:
-            if hasattr(base, "_registry"):
-                base._registry.append(cls)
-
-        cls._registry.append(cls)
-
-    @classmethod
-    def registry(cls) -> list[type["SimpleKeywordBox"]]:
-        """Return all subclasses registered under this box."""
-        return cls._registry
 
     @classmethod
     def from_string(cls, s: str) -> "SimpleKeyword":
@@ -44,22 +27,25 @@ class SimpleKeywordBox:
             If no matching keyword is found in the registry.
         """
         norm = s.lower()
-        for c in cls._registry:
-            for attr in dir(c):
-                if attr.startswith("_"):  # Skip private/magic attributes
-                    continue
-                value = getattr(c, attr)
-                # Case 1: if the user searches for keyword through how it woould appear in ORCA input
-                if isinstance(value, SimpleKeyword) and value.keyword.lower() == norm:
-                    return value
-                # Case 2: if the user searches for keyword through how it is stored in OPI
-                elif isinstance(value, SimpleKeyword) and attr.lower() == norm:
-                    return value
-                # Case 3: if the user searches for keyword through a known alias
-                elif (
-                    isinstance(value, SimpleKeyword) and value.alias and value.alias.lower() == norm
-                ):
-                    return value
+
+        # Here the function will loop over all attributes both existing and inherited by the current class.
+        # The simple keywords are structured such that, for example, the larger `Scf` grouping is a child class of the semantically smaller groupings,
+        # such as `ScfConvergence`, `ScfThreshold` and so on.
+        for attr in dir(cls):
+            value = getattr(cls, attr)
+            if attr.startswith("_") or not isinstance(
+                value, SimpleKeyword
+            ):  # Skip private/magic attributes or non-Simple Keyword attributes
+                continue
+            # Case 1: if the user searches for keyword through how it would appear in ORCA input
+            if value.keyword.lower() == norm:
+                return value
+            # Case 2: if the user searches for keyword through how it is stored in OPI
+            elif attr.lower() == norm:
+                return value
+            # Case 3: if the user searches for keyword through a known alias
+            elif value.alias and value.alias.lower() == norm:
+                return value
 
         raise ValueError(f"Keyword {s} not found in class {cls.__name__}")
 
