@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from opi.input import Input
@@ -273,10 +275,10 @@ def test_user_added_block_persists() -> None:
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
-def test_settings_win_over_user_block_modification() -> None:
-    """Settings-controlled block fields do not overwrite user modifications."""
+def test_user_modified_block_persists() -> None:
+    """Mutating an existing block on input_object is reflected on every subsequent access."""
     task = OptTask(method="pbe", task_settings={"opt_maxiter": 50})
-    task.input_object.blocks[BlockGeom].maxiter = 99  # mutate after first access
+    task.input_object.blocks[BlockGeom].maxiter = 99
     assert task.input_object.blocks[BlockGeom].maxiter == 99
 
 
