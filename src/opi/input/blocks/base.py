@@ -211,10 +211,36 @@ class Block(BaseModel, ABC):
 
     @classmethod
     def get_subclass_by_name(cls, name: str) -> type["Block"]:
+        """
+        Look up a ``Block`` subclass by its class name or ORCA block name.
+
+        Matching is case-insensitive and checks both the Python class name
+        (e.g. ``"BlockScf"``) and the ORCA block name returned by the
+        subclass's ``name`` property (e.g. ``"scf"``).
+
+        Parameters
+        ----------
+        name : str
+            Class name or ORCA block name of the desired subclass.
+
+        Returns
+        -------
+        type[Block]
+            The matching subclass.
+
+        Raises
+        ------
+        ValueError
+            If no subclass matches ``name``.
+        """
+        # Search for `Block` class by OPI name
         matches = {sub.__name__.lower(): sub for sub in cls.__subclasses__()}
+        # Search for `Block` class by ORCA block name
         name_matches = {sub().name.lower(): sub for sub in cls.__subclasses__()}
+        # Collect matches across both criteria
         match = matches.get(name.lower()) or name_matches.get(name.lower())
 
+        # If no match is found, raise ValueError
         if match is None:
             raise ValueError(
                 f"No Block subclass found with name {name!r}. Available: {list(matches.keys())}"

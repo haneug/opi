@@ -46,7 +46,7 @@ class FreqResults(TaskResults):
 
 class FreqTask(SimpleTask[FreqResults]):
     """
-    High-level task for harmonic frequency calculations.
+    Task for harmonic frequency calculations.
 
     Returns a ``FreqResults`` object.  ``status`` is ``True`` when the job
     terminated normally (SCF convergence is not checked separately because
