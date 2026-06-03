@@ -229,14 +229,14 @@ class Settings(BaseModel):
 
                 case (validator, key):
                     block_type = Block.get_subclass_by_name(validator)
-                    block_class = block_type(**{key: value})
+                    block_instant = block_type(**{key: value})
 
                     block_exists, *_ = input_object.has_blocks(block_type)  # type:ignore
                     if not block_exists:
-                        input_object.add_blocks(block_class)
+                        input_object.add_blocks(block_instant)
                     else:
                         existing_block = next(iter(input_object.get_blocks(block_type).values()))
-                        new_block = existing_block + block_class
+                        new_block = existing_block | block_instant
                         input_object.add_blocks(new_block, overwrite=True)
 
         return input_object

@@ -169,7 +169,20 @@ class Block(BaseModel, ABC):
 
         return s
 
-    def __add__(self, other: "Block") -> "Block":
+    def __or__(self, other: "Block") -> "Block":
+        """
+        Merges two instances of `Block`. If a common attribute exists in both `self` and `other`, the value in `other` will be given precedence.
+        Parameters
+        ----------
+        other: Block
+            Instance of `Block` to be merged into `self`
+
+        Returns
+        -------
+        Block
+            New instance of `Block` with attributes of `self` and `other`.
+
+        """
         new_block = self.__class__.model_validate(
             {**self.model_dump(), **other.model_dump(exclude_unset=True)}
         )
