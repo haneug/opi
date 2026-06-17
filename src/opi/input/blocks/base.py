@@ -234,16 +234,18 @@ class Block(BaseModel, ABC):
             If no subclass matches ``name``.
         """
         # Search for `Block` class by OPI name
-        matches = {sub.__name__.lower(): sub for sub in cls.__subclasses__()}
+        opi_block_name_matches = {sub.__name__.lower(): sub for sub in cls.__subclasses__()}
         # Search for `Block` class by ORCA block name
-        name_matches = {sub().name.lower(): sub for sub in cls.__subclasses__()}
+        orca_block_name_matches = {sub().name.lower(): sub for sub in cls.__subclasses__()}
         # Collect matches across both criteria
-        match = matches.get(name.lower()) or name_matches.get(name.lower())
+        all_matches = opi_block_name_matches.get(name.lower()) or orca_block_name_matches.get(
+            name.lower()
+        )
 
         # If no match is found, raise ValueError
-        if match is None:
+        if all_matches is None:
             raise ValueError(
-                f"No Block subclass found with name {name!r}. Available: {list(matches.keys())}"
+                f"No Block subclass found with name {name!r}. Available: {list(opi_block_name_matches.keys())}"
             )
 
-        return match
+        return all_matches
