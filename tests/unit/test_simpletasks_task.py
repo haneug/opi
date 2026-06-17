@@ -274,18 +274,18 @@ def test_user_added_block_persists() -> None:
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_settings_win_over_user_block_modification() -> None:
-    """Settings-controlled block fields overwrite user modifications on every access."""
+    """Settings-controlled block fields do not overwrite user modifications."""
     task = OptTask(method="pbe", task_settings={"opt_maxiter": 50})
     task.input_object.blocks[BlockGeom].maxiter = 99  # mutate after first access
-    assert task.input_object.blocks[BlockGeom].maxiter == 50
+    assert task.input_object.blocks[BlockGeom].maxiter == 99
 
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_settings_keyword_restored_after_user_removal() -> None:
-    """A settings-controlled keyword removed from _input_object is re-added on the next access."""
+    """A method-controlled keyword removed from input_object is re-added on the next access."""
     task = SinglePointTask(method="pbe", basis_set="def2-svp")
-    task._input_object.remove_simple_keywords(BasisSet.DEF2_SVP)
+    task.input_object.remove_simple_keywords(BasisSet.DEF2_SVP)
     assert task.input_object.has_simple_keywords(BasisSet.DEF2_SVP) == (True,)
 
 
@@ -312,7 +312,9 @@ def test_user_set_memory_persists() -> None:
 def test_user_added_arbitrary_string_persists() -> None:
     """An arbitrary string added to input_object is preserved across accesses."""
     task = SinglePointTask(method="pbe")
-    task.input_object.add_arbitrary_string("% some custom block\nend", pos=ArbitraryStringPos.BOTTOM)
+    task.input_object.add_arbitrary_string(
+        "% some custom block\nend", pos=ArbitraryStringPos.BOTTOM
+    )
     assert len(task.input_object.arbitrary_strings) == 1
     assert len(task.input_object.arbitrary_strings) == 1
 

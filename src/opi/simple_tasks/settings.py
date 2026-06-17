@@ -236,7 +236,7 @@ class Settings(BaseModel):
                         input_object.add_blocks(block_instant)
                     else:
                         existing_block = next(iter(input_object.get_blocks(block_type).values()))
-                        new_block = existing_block | block_instant
+                        new_block = block_instant | existing_block
                         input_object.add_blocks(new_block, overwrite=True)
 
         return input_object
