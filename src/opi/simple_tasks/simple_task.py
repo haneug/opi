@@ -62,8 +62,8 @@ class SimpleTask(ABC, typing.Generic[_RT]):
     """
 
     _results_type: type[_RT]
-    _task_settings: TaskSettings
-    _method_settings: MethodSettings
+    _task_settings: TaskSettings | None = None
+    _method_settings: MethodSettings | None = None
     _input_object: Input
 
     def __init__(
@@ -72,8 +72,9 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         basis_set: str | SimpleKeyword | None = None,
         solvation_model: str | SimpleKeyword | None = None,
         solvent: str | Solvent | None = None,
-        task_settings: "TaskSettings | dict[str, Any] | None" = None,
-        method_settings: "MethodSettings | dict[str, Any] | None" = None,
+        task_settings: "TaskSettings | dict[str, typing.Any] | None" = None,
+        method_settings: "MethodSettings | dict[str, typing.Any] | None" = None,
+        input: Input | str | None = None,
     ):
         """
         Parameters
@@ -102,46 +103,57 @@ class SimpleTask(ABC, typing.Generic[_RT]):
             If neither ``method`` nor a ``method_settings`` object with a
             method is provided.
         """
-        task_settings_type = self._get_task_settings_type()
-        if isinstance(task_settings, dict):
-            self._task_settings = task_settings_type.model_validate(task_settings)
-        else:
-            self._task_settings = task_settings or task_settings_type()  # type: ignore[call-arg]
-
-        resolved_method_settings: MethodSettings | None = (
-            MethodSettings(**method_settings)
-            if isinstance(method_settings, dict)
-            else method_settings
-        )
-
-        if method is not None:
-            resolved_type = MethodSettings.resolve_method_settings_type(method)
-            base_data: dict[str, Any] = {
-                k: v
-                for k, v in {
-                    "method": method,
-                    "basis_set": basis_set,
-                    "solvation_model": solvation_model,
-                    "solvent": solvent,
-                }.items()
-                if v is not None
-            }
-            if resolved_method_settings is not None:
-                extra: dict[str, Any] = {
-                    **resolved_method_settings.model_dump(exclude_unset=True),
-                    **(resolved_method_settings.model_extra or {}),
-                }
-                self._method_settings = resolved_type(**{**extra, **base_data})
+        if input:
+            if not isinstance(input, Input):
+                self._input_object: Input = Input()
+                self._input_object.add_arbitrary_string(input, pos="top")
             else:
-                self._method_settings = resolved_type(**base_data)
-        else:
-            if resolved_method_settings is None:
-                raise ValueError(
-                    "Either 'method' or a 'method_settings' object with a method must be provided"
-                )
-            self._method_settings = resolved_method_settings
+                self._input_object: Input = input
 
-        self._input_object: Input = Input()
+            self._task_settings = None
+            self._method_settings = None
+
+        else:
+            task_settings_type = self._get_task_settings_type()
+            if isinstance(task_settings, dict):
+                self._task_settings = task_settings_type.model_validate(task_settings)
+            else:
+                self._task_settings = task_settings or task_settings_type()  # type: ignore[call-arg]
+
+            resolved_method_settings: MethodSettings | None = (
+                MethodSettings(**method_settings)
+                if isinstance(method_settings, dict)
+                else method_settings
+            )
+
+            if method is not None:
+                resolved_type = MethodSettings.resolve_method_settings_type(method)
+                base_data: dict[str, typing.Any] = {
+                    k: v
+                    for k, v in {
+                        "method": method,
+                        "basis_set": basis_set,
+                        "solvation_model": solvation_model,
+                        "solvent": solvent,
+                    }.items()
+                    if v is not None
+                }
+                if resolved_method_settings is not None:
+                    extra: dict[str, typing.Any] = {
+                        **resolved_method_settings.model_dump(exclude_unset=True),
+                        **(resolved_method_settings.model_extra or {}),
+                    }
+                    self._method_settings = resolved_type(**{**extra, **base_data})
+                else:
+                    self._method_settings = resolved_type(**base_data)
+            else:
+                if resolved_method_settings is None:
+                    raise ValueError(
+                        "Either 'method' or a 'method_settings' object with a method must be provided"
+                    )
+                self._method_settings = resolved_method_settings
+
+            self._input_object: Input = Input()
 
     @classmethod
     def _get_task_settings_type(cls) -> type[TaskSettings]:
@@ -151,14 +163,14 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         return typing.cast(type[TaskSettings], task_setting_type)
 
     @property
-    def task_settings(self) -> TaskSettings:
+    def task_settings(self) -> TaskSettings | None:
         """Task-level settings (keyword, thresholds, flags)."""
-        return self._task_settings
+        return self._task_settings if self._task_settings else None
 
     @property
-    def method_settings(self) -> MethodSettings:
+    def method_settings(self) -> MethodSettings | None:
         """Method-level settings (functional, basis set, solvent, …)."""
-        return self._method_settings
+        return self._method_settings if self._method_settings else None
 
     @property
     def input_object(self) -> Input:
@@ -177,8 +189,10 @@ class SimpleTask(ABC, typing.Generic[_RT]):
             The task's ``Input`` object, ready for inspection or further
             user customisation before calling ``run()``.
         """
-        self._task_settings.map_to_input(self._input_object)
-        self.method_settings.map_to_input(self._input_object)
+        if self._method_settings and self._task_settings:
+            self._task_settings.map_to_input(self._input_object)
+            self._method_settings.map_to_input(self._input_object)
+
         return self._input_object
 
     @input_object.setter
@@ -186,14 +200,14 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         self._input_object = value
 
     @property
-    def keyword(self) -> SimpleKeyword:
+    def keyword(self) -> SimpleKeyword | None:
         """The primary task keyword (e.g. ``Task.SP``, ``Task.OPT``)."""
-        return self._task_settings.task_keyword
+        return self._task_settings.task_keyword if self._task_settings else None
 
     @property
     def method(self) -> SimpleKeyword | None:
         """Active method keyword, or ``None`` if the settings type has no method field."""
-        if hasattr(self._method_settings, "method"):
+        if self._method_settings and hasattr(self._method_settings, "method"):
             return self._method_settings.method
         return None
 
@@ -203,7 +217,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         Change the method, migrating to a different settings type when needed.
 
         If ``new_value`` belongs to the same method family as the current
-        settings, the field is updated in-place.  Otherwise a new settings
+        settings, the field is updated in-place. Otherwise a new settings
         object of the correct type is created, carrying over compatible fields
         (``basis_set``, ``solvation_model``, ``solvent``) and warning about
         any fields that are dropped.
@@ -213,6 +227,8 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         AttributeError
             If the current settings type does not have a ``method`` field.
         """
+        if not self._method_settings:
+            raise AttributeError("Method settings has not been set.")
         if not hasattr(self._method_settings, "method"):
             raise AttributeError("method is not defined in method_settings object")
         if new_value is None:
@@ -244,7 +260,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
     @property
     def basis_set(self) -> SimpleKeyword | None:
         """Active basis-set keyword, or ``None`` if the settings type has no basis_set field."""
-        if hasattr(self._method_settings, "basis_set"):
+        if self._method_settings and hasattr(self._method_settings, "basis_set"):
             return self._method_settings.basis_set
         return None
 
@@ -256,6 +272,8 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         AttributeError
             If the current settings type does not have a ``basis_set`` field.
         """
+        if not self._method_settings:
+            raise AttributeError("Method settings has not been set.")
         if not hasattr(self._method_settings, "basis_set"):
             raise AttributeError("basis_set is not defined in method_settings object")
         self._method_settings.basis_set = new_value  # type:ignore
@@ -263,7 +281,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
     @property
     def solvent(self) -> str | None:
         """Solvent name, or ``None`` if the settings type has no solvent field."""
-        if hasattr(self._method_settings, "solvent"):
+        if self._method_settings and hasattr(self._method_settings, "solvent"):
             return self._method_settings.solvent
         return None
 
@@ -275,6 +293,8 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         AttributeError
             If the current settings type does not have a ``solvent`` field.
         """
+        if not self._method_settings:
+            raise AttributeError("Method settings has not been set.")
         if not hasattr(self._method_settings, "solvent"):
             raise AttributeError("solvent is not defined in method_settings object")
         self._method_settings.solvent = new_value
@@ -282,7 +302,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
     @property
     def solvation_model(self) -> SimpleKeyword | None:
         """Solvation-model keyword, or ``None`` if the settings type has no solvation_model field."""
-        if hasattr(self._method_settings, "solvation_model"):
+        if self._method_settings and hasattr(self._method_settings, "solvation_model"):
             return self._method_settings.solvation_model
         return None
 
@@ -294,6 +314,8 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         AttributeError
             If the current settings type does not have a ``solvation_model`` field.
         """
+        if not self._method_settings:
+            raise AttributeError("Method settings has not been set.")
         if not hasattr(self._method_settings, "solvation_model"):
             raise AttributeError("solvation_model is not defined in method_settings object")
         self._method_settings.solvation_model = new_value  # type:ignore

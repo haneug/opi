@@ -1,7 +1,6 @@
 import typing
 
-from opi.input.simple_keywords import SimpleKeyword, Solvent, Task
-from opi.simple_tasks.method_settings import MethodSettings
+from opi.input.simple_keywords import SimpleKeyword, Task
 from opi.simple_tasks.simple_task import SimpleTask, TaskResults, TaskSettings
 
 
@@ -54,16 +53,3 @@ class FreqTask(SimpleTask[FreqResults]):
 
     _task_settings: FreqSettings
     _results_type = FreqResults
-
-    def __init__(
-        self,
-        method: str | SimpleKeyword | None = None,
-        basis_set: str | SimpleKeyword | None = None,
-        solvation_model: str | SimpleKeyword | None = None,
-        solvent: str | Solvent | None = None,
-        task_settings: FreqSettings | None = None,
-        method_settings: MethodSettings | None = None,
-    ):
-        super().__init__(
-            method, basis_set, solvation_model, solvent, task_settings, method_settings
-        )

@@ -100,19 +100,6 @@ class OptTask(SimpleTask[OptResults]):
     _task_settings: OptSettings
     _results_type = OptResults
 
-    def __init__(
-        self,
-        method: str | SimpleKeyword | None = None,
-        basis_set: str | SimpleKeyword | None = None,
-        solvation_model: str | SimpleKeyword | None = None,
-        solvent: str | Solvent | None = None,
-        task_settings: OptSettings | None = None,
-        method_settings: MethodSettings | None = None,
-    ):
-        super().__init__(
-            method, basis_set, solvation_model, solvent, task_settings, method_settings
-        )
-
     @property
     def opt_threshold(self) -> SimpleKeyword | None:
         """Convergence threshold keyword (e.g. ``OptThreshold.TIGHTOPT``)."""
