@@ -12,7 +12,7 @@ class SimpleKeywordBox:
     @classmethod
     def from_string(cls, s: str) -> "SimpleKeyword":
         """
-        Look up a ``SimpleKeyword`` by string across all registered subclasses.
+        Look up a ``SimpleKeyword`` by string across all attributes.
 
         Matching is case-insensitive and checks the keyword value, the
         attribute name, and the optional alias — in that order.
@@ -26,23 +26,24 @@ class SimpleKeywordBox:
 
         # Here the function will loop over all attributes both existing and inherited by the current class.
         # The simple keywords are structured such that, for example, the larger `Scf` grouping is a child class of the semantically smaller groupings,
-        # such as `ScfConvergence`, `ScfThreshold` and so on.
-        for attr in dir(cls):
+        # such as `ScfConvergence`, `ScfThreshold` and so on. From these attributes the simple keyword are selected and checked as to
+        # whether they match the input string.
+        for attr_name in dir(cls):
             # Get the value associated with attribute
-            simple_keyword = getattr(cls, attr)
-            if attr.startswith("_") or not isinstance(
-                simple_keyword, SimpleKeyword
+            candidate_attr = getattr(cls, attr_name)
+            if attr_name.startswith("_") or not isinstance(
+                candidate_attr, SimpleKeyword
             ):  # Skip private/magic attributes or non-Simple Keyword attributes
                 continue
             # Case 1: if the user searches for keyword through how it would appear in ORCA input
-            if simple_keyword.keyword.lower() == norm:
-                return simple_keyword
+            if candidate_attr.keyword.lower() == norm:
+                return candidate_attr
             # Case 2: if the user searches for keyword through how it is stored in OPI
-            elif attr.lower() == norm:
-                return simple_keyword
+            if attr_name.lower() == norm:
+                return candidate_attr
             # Case 3: if the user searches for keyword through a known alias
-            elif simple_keyword.alias and any(a.lower() == norm for a in simple_keyword.alias):
-                return simple_keyword
+            if candidate_attr.alias and any(a.lower() == norm for a in candidate_attr.alias):
+                return candidate_attr
 
         # In the case that no matches are found, raise ValueError
         raise ValueError(f"Keyword {s} not found in class {cls.__name__}")
@@ -50,7 +51,7 @@ class SimpleKeywordBox:
     @classmethod
     def find_keyword(cls, inp: "SimpleKeyword | str") -> "SimpleKeyword":
         """
-        Resolve a string or ``SimpleKeyword`` to a registered ``SimpleKeyword``.
+        Resolve a string or ``SimpleKeyword`` to a valid ``SimpleKeyword``.
 
         Accepts a bare string or an existing ``SimpleKeyword`` (whose ``.keyword``
         string is used for the lookup).
@@ -59,7 +60,7 @@ class SimpleKeywordBox:
         ------
         ValueError
             If ``inp`` is not a str or SimpleKeyword, or if the string is not
-            found in the registry.
+            found.
         """
         # If input is SimpleKeyword, convert to string representation
         if isinstance(inp, SimpleKeyword):
