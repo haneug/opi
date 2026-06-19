@@ -23,8 +23,8 @@ def run_exmp054(
 
     calc = Calculator(basename="job", working_dir=working_dir)
     calc.structure = structure
-
-    calc.input.add_blocks(BlockCasscf(nel=2, norb=2), BlockOutput(dumpactints=True))
+    casscf_block = BlockCasscf(nel=2, norb=2)
+    calc.input.add_blocks(casscf_block, BlockOutput(dumpactints=True))
     calc.input.ncores = 4
 
     calc.write_input()
@@ -49,12 +49,17 @@ def run_exmp054(
     print(output.results_properties.geometries[0].energy[0].totalenergy[0][0])
 
     # > retrieve the path to the fcidump file
-    fcidump_file = output.get_outfile().with_suffix(".fcidump")
+    fcidump = output.get_fcidump()
 
-    # > Read and print the file
-    print("FCIDUMP file:")
-    with open(fcidump_file, "r") as f:
-        print(f.read())
+    if fcidump is None:
+        print(f"FCIDUMP generation failed, see output file: {output.get_outfile()}")
+        print(output.error_message())
+        sys.exit(1)
+
+    print("hcore matrix")
+    print(fcidump.hcore_matrix)
+    print("ERI tensor")
+    print(fcidump.eri_tensor)
 
     return output
 
