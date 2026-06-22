@@ -1,5 +1,6 @@
 import typing
 import warnings
+from typing import Any
 
 from pydantic import ConfigDict, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -41,7 +42,7 @@ class MethodSettings(Settings):
     solvation_model: typing.Annotated[SimpleKeyword, SolvationModel] | None = None
     solvent: typing.Annotated[str, Solvent] | None = None
 
-    def __new__(cls, /, **data: typing.Any) -> "MethodSettings":
+    def __new__(cls, /, **data: Any) -> "MethodSettings":
         """
         Dispatch to the correct ``MethodSettings`` subclass.
 
@@ -58,7 +59,7 @@ class MethodSettings(Settings):
 
     @model_validator(mode="before")
     @classmethod
-    def _check_valid_fields(cls, data: typing.Any) -> typing.Any:
+    def _check_valid_fields(cls, data: Any) -> Any:
         """
         Reject unknown fields before Pydantic processes them.
 
@@ -143,7 +144,7 @@ class DftSettings(MethodSettings):
 
     @field_validator("*", mode="before")
     @classmethod
-    def validate_fields(cls, value: typing.Any, info: ValidationInfo) -> typing.Any:
+    def validate_fields(cls, value: Any, info: ValidationInfo) -> Any:
         """
         Pre-validate all fields, with special handling for ``method``.
 

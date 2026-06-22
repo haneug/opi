@@ -1,5 +1,4 @@
 import typing
-from functools import cached_property
 
 from opi.input.simple_keywords import SimpleKeyword, Solvent, Task
 from opi.simple_tasks.method_settings import MethodSettings
@@ -16,12 +15,12 @@ class FreqSettings(TaskSettings):
 class FreqResults(TaskResults):
     """Results from a harmonic frequency calculation."""
 
-    @cached_property
+    @property
     def status(self) -> bool:
         """``True`` if the job terminated normally (SCF convergence not re-checked)."""
         return self.output.terminated_normally()
 
-    @cached_property
+    @property
     def free_energy_delta(self) -> float:
         """
         Thermal free-energy correction (ΔG) in Hartree.

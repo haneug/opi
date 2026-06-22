@@ -1,5 +1,4 @@
 import typing
-from functools import cached_property
 
 from opi.input import Input
 from opi.input.simple_keywords import Goat, SimpleKeyword, Solvent
@@ -58,12 +57,12 @@ class GoatSettings(TaskSettings):
 class GoatResults(TaskResults):
     """Results from a GOAT conformer-ensemble exploration."""
 
-    @cached_property
+    @property
     def status(self) -> bool:
         """``True`` if the job terminated normally."""
         return self.output.terminated_normally()
 
-    @cached_property
+    @property
     def structures(self) -> list[Structure]:
         """All structures in the final conformer ensemble."""
         structures = Structure.from_trj_xyz(
@@ -71,7 +70,7 @@ class GoatResults(TaskResults):
         )
         return structures
 
-    @cached_property
+    @property
     def properties(self) -> list[Properties]:
         """Per-conformer properties (energies, …) from the final ensemble file."""
         properties = Properties.from_trj_xyz(
@@ -79,7 +78,7 @@ class GoatResults(TaskResults):
         )
         return properties
 
-    @cached_property
+    @property
     def primary_property(self) -> tuple[list[Structure], list[Properties]]:
         """``(structures, properties)`` tuple for the final conformer ensemble."""
         return self.structures, self.properties

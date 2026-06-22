@@ -31,7 +31,7 @@ def run_exmp054(
         print("SinglePoint task failed")
         sys.exit(1)
 
-    # > extract final energy from the `TaskResults` object
+    # > extract primary property from the `TaskResults` object. For a single point calculation, it is the final energy.
     final_energy = singlepoint_result.final_energy
 
     print(f"Final single point energy: {final_energy: 10f} Eh")

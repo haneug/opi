@@ -1,5 +1,6 @@
 import types as builtin_types
 import typing
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -23,148 +24,6 @@ class Settings(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
     _name: str
-
-    def __str__(self) -> str:
-        """
-        String representation of `Settings`. Mostly for debugging purposes.
-
-        Returns
-        -------
-        str
-            String representation of `Settings`.
-
-        """
-        lines = [f"{self._name.title()} Settings:"]
-        for field_name, value in self.model_dump().items():
-            lines.append(f"  {field_name}: {value}")
-        return "\n".join(lines)
-
-    @staticmethod
-    def _get_field_metadata(hint: typing.Any) -> tuple[typing.Any, ...]:
-        """
-        Function to return the metadata of the type annotation of a field.
-        The type hints are first retrieved after which the metadata is extracted and then returned.
-
-        Parameters
-        ----------
-        hint: Type hint / annotation of field
-
-        Returns
-        -------
-        tuple
-            Tuple of metadata about the field.
-
-        """
-        origin = typing.get_origin(hint)
-        args = typing.get_args(hint)
-        is_union = origin is typing.Union or isinstance(hint, builtin_types.UnionType)
-        if is_union:
-            non_none_args = [arg for arg in args if arg is not type(None)]
-            if non_none_args:
-                return Settings._get_field_metadata(non_none_args[0])
-        return args[1:] if len(args) > 1 else ()
-
-    @staticmethod
-    def _resolve_field_value(
-        value: typing.Any, metadata: tuple[type["SimpleKeywordBox"]] | tuple[str, str]
-    ) -> typing.Any:
-        """
-        Function to translate user input into OPI compatible types. This is done using the metadata of the type
-        annotation associated with the field. There are two cases:
-
-        Case 1
-        ------
-        Metadata has only one value. In this case the field is a simple keyword. Here the class associated with the input
-        option (eg: `Dft`) ,  will be checked to see if the user-given input option exists , and if it does , returns
-        the enum member associated with the input option.
-
-        Case 2
-        ------
-        Metadata has two values, validator class and key. In this case the field is a block option. The associated block
-        class is first fetched, and then the attribute of the block is set to the user-given input option. This is then
-        validated by the block itself using Pydantic features. The validation function of the block translates user input
-        to OPI compatible types, which is then returned.
-
-
-        Parameters
-        ----------
-        value: typing.Any
-            User input value.
-        metadata: tuple
-            Tuple of metadata about the field.
-
-        Returns
-        -------
-        typing.Any
-            User input value translated to OPI compatible types.
-
-        """
-        match metadata:
-            case (validator,):
-                # Case 1: Simple keyword
-
-                if isinstance(validator, type) and issubclass(validator, Solvent):
-                    return value
-                if not isinstance(validator, type) or not issubclass(validator, SimpleKeywordBox):
-                    raise TypeError(f"Expected SimpleKeywordBox subclass, got {validator}")
-                return validator.find_keyword(value)
-
-            case (validator, key):
-                # Case 2: Block option
-                if not isinstance(key, str):
-                    raise TypeError(f"Expected str key, got {type(key)}")
-
-                block_cls = Block.get_subclass_by_name(str(validator))
-                instance = block_cls.model_validate({key: value})
-                return getattr(instance, str(key))
-
-            case _:
-                return value
-
-    def _get_simple_keyword(
-        self,
-        validator: type[SimpleKeywordBox],
-        value: str | SimpleKeyword | SolvationModelAndSolvent,
-    ) -> SimpleKeyword:
-        """
-        Resolve a field value to a ``SimpleKeyword``.
-
-        For ``SolvationModel`` fields the current ``solvent`` attribute is
-        combined with the model to produce a ``SolvationModelAndSolvent``
-        keyword; all other fields are looked up directly in their enum.
-
-        Parameters
-        ----------
-        validator : type[SimpleKeywordBox]
-            The enum class that owns the keyword (e.g. ``Dft``, ``BasisSet``).
-        value : str or SimpleKeyword or SolvationModelAndSolvent
-            Raw user-supplied value.
-
-        Returns
-        -------
-        SimpleKeyword
-            Resolved keyword ready to pass to ``Input.add_simple_keywords``.
-
-        Raises
-        ------
-        ValueError
-            If ``validator`` is ``SolvationModel`` but ``solvent`` is not set.
-        TypeError
-            If ``value`` is not a ``SolvationModelAndSolvent`` when required.
-        """
-        if validator == SolvationModel:
-            solvent_value = getattr(self, "solvent", None)
-            if solvent_value is None:
-                raise ValueError("solvent is required for SolvationModel")
-            solvent = Solvent(Solvent.find_keyword(str(solvent_value)))
-            if not isinstance(value, SolvationModelAndSolvent):
-                raise TypeError("Wrong type for solvent or solvation model")
-
-            new_keyword = value(solvent)
-        else:
-            new_keyword = validator.find_keyword(value)
-
-        return new_keyword
 
     def __or__(self, other: "Settings") -> "Settings":
         """
@@ -209,6 +68,7 @@ class Settings(BaseModel):
         Input
             Modified `Input` object.
         """
+        # include_extras=True preserves Annotated metadata, which encodes how each field maps to ORCA input
         hints = typing.get_type_hints(self.__class__, include_extras=True)
 
         for field_name, field_type in hints.items():
@@ -220,7 +80,9 @@ class Settings(BaseModel):
 
             match metadata:
                 case (validator,):
+                    # Single-element metadata: field maps to a simple keyword
                     if issubclass(validator, Solvent):
+                        # Solvent is handled indirectly via SolvationModel; skip standalone
                         continue
 
                     new_keyword = self._get_simple_keyword(validator, value)
@@ -228,6 +90,7 @@ class Settings(BaseModel):
                         input_object.add_simple_keywords(new_keyword)
 
                 case (validator, key):
+                    # Two-element metadata: field maps to an attribute on a block
                     block_type = Block.get_subclass_by_name(validator)
                     block_instant = block_type(**{key: value})
 
@@ -235,15 +98,181 @@ class Settings(BaseModel):
                     if not block_exists:
                         input_object.add_blocks(block_instant)
                     else:
+                        # Merge with any existing block of this type so no other attributes are lost
                         existing_block = next(iter(input_object.get_blocks(block_type).values()))
                         new_block = block_instant | existing_block
                         input_object.add_blocks(new_block, overwrite=True)
 
         return input_object
 
+
+    def __str__(self) -> str:
+        """
+        String representation of `Settings`. Mostly for debugging purposes.
+
+        Returns
+        -------
+        str
+            String representation of `Settings`.
+
+        """
+        lines = [f"{self._name.title()} Settings:"]
+        for field_name, value in self.model_dump().items():
+            lines.append(f"  {field_name}: {value}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _get_field_metadata(hint: Any) -> tuple[Any, ...]:
+        """
+        Function to return the metadata of the type annotation of a field.
+        The type hints are first retrieved after which the metadata is extracted and then returned.
+
+        Parameters
+        ----------
+        hint: Type hint / annotation of field
+
+        Returns
+        -------
+        tuple
+            Tuple of metadata about the field.
+
+        """
+        origin = typing.get_origin(hint)
+        args = typing.get_args(hint)
+        # Optional[X] and X | None both produce a Union; unwrap to reach the inner type
+        is_union = origin is typing.Union or isinstance(hint, builtin_types.UnionType)
+        if is_union:
+            non_none_args = [arg for arg in args if arg is not type(None)]
+            if non_none_args:
+                return Settings._get_field_metadata(non_none_args[0])
+        # For Annotated[T, m1, m2, ...], get_args returns (T, m1, m2, ...); skip T at index 0
+        return args[1:] if len(args) > 1 else ()
+
+    @staticmethod
+    def _resolve_field_value(
+        value: Any, metadata: tuple[type["SimpleKeywordBox"]] | tuple[str, str]
+    ) -> Any:
+        """
+        Function to translate user input into OPI compatible types. This is done using the metadata of the type
+        annotation associated with the field. There are two cases:
+
+        Case 1
+        ------
+        Metadata has only one value. In this case the field is a simple keyword. Here the class associated with the input
+        option (eg: `Dft`) ,  will be checked to see if the user-given input option exists , and if it does , returns
+        the enum member associated with the input option.
+
+        Example
+        =======
+        simple_keyword_attribute: typing.Annotated[SimpleKeyword, Dft]
+
+        In this case the metadata is the class Dft, which signifies that the expected simple keyword must be from the
+        Dft enum.
+
+        Case 2
+        ------
+        Metadata has two values, validator class and key. In this case the field is a block option. The associated block
+        class is first fetched, and then the attribute of the block is set to the user-given input option. This is then
+        validated by the block itself using Pydantic features. The validation function of the block translates user input
+        to OPI compatible types, which is then returned.
+
+        Example
+        =======
+        block_option: typing.Annotated[int, BlockScf, "maxiter"]
+
+        In this case the metadata is (BlockScf, "maxiter"). The first value indicates which OPI Block class the value belongs to,
+        while the second value indicates which field from the Block class correlates to this block option.
+
+
+        Parameters
+        ----------
+        value: Any
+            User input value.
+        metadata: tuple
+            Tuple of metadata about the field.
+
+        Returns
+        -------
+        Any
+            User input value translated to OPI compatible types.
+
+        """
+        match metadata:
+            case (validator,):
+                # Case 1: Simple keyword — look up value as a member of the validator enum
+                # Solvent is not resolved here; it is paired with SolvationModel later in _get_simple_keyword
+                if isinstance(validator, type) and issubclass(validator, Solvent):
+                    return value
+                if not isinstance(validator, type) or not issubclass(validator, SimpleKeywordBox):
+                    raise TypeError(f"Expected SimpleKeywordBox subclass, got {validator}")
+                # Find simple keyword using the validator given
+                return validator.find_keyword(value)
+
+            case (validator, key):
+                # Case 2: Block option — run value through Pydantic block validation to get the translated type
+                if not isinstance(key, str):
+                    raise TypeError(f"Expected str key, got {type(key)}")
+
+                block_cls = Block.get_subclass_by_name(str(validator))
+                instance = block_cls.model_validate({key: value})
+                return getattr(instance, str(key))
+
+            case _:
+                # No metadata: field needs no translation
+                return value
+
+    def _get_simple_keyword(
+        self,
+        validator: type[SimpleKeywordBox],
+        value: str | SimpleKeyword | SolvationModelAndSolvent,
+    ) -> SimpleKeyword:
+        """
+        Resolve a field value to a ``SimpleKeyword``.
+
+        For ``SolvationModel`` fields the current ``solvent`` attribute is
+        combined with the model to produce a ``SolvationModelAndSolvent``
+        keyword; all other fields are looked up directly in their enum.
+
+        Parameters
+        ----------
+        validator : type[SimpleKeywordBox]
+            The enum class that owns the keyword (e.g. ``Dft``, ``BasisSet``).
+        value : str or SimpleKeyword or SolvationModelAndSolvent
+            Raw user-supplied value.
+
+        Returns
+        -------
+        SimpleKeyword
+            Resolved keyword ready to pass to ``Input.add_simple_keywords``.
+
+        Raises
+        ------
+        ValueError
+            If ``validator`` is ``SolvationModel`` but ``solvent`` is not set.
+        TypeError
+            If ``value`` is not a ``SolvationModelAndSolvent`` when required.
+        """
+        if validator == SolvationModel:
+            # SolvationModel needs a solvent to form a compound keyword; read it from the Solvent field
+            solvent_value = getattr(self, "solvent", None)
+            if solvent_value is None:
+                raise ValueError("A solvation model was requested without a solvent.")
+            solvent = Solvent(Solvent.find_keyword(str(solvent_value)))
+            if not isinstance(value, SolvationModelAndSolvent):
+                raise TypeError("Wrong type for solvent or solvation model")
+
+            # value is a SolvationModelAndSolvent callable; calling it with solvent produces the keyword
+            new_keyword = value(solvent)
+        else:
+            # All other validators: look up the string value directly in the enum
+            new_keyword = validator.find_keyword(value)
+
+        return new_keyword
+
+
     @field_validator("*", mode="before")
     @classmethod
-    def validate_fields(cls, value: typing.Any, info: ValidationInfo) -> typing.Any:
+    def validate_fields(cls, value: Any, info: ValidationInfo) -> Any:
         """
         This field validator handles validation upon reassignment of values of class attributes.
 
@@ -259,7 +288,7 @@ class Settings(BaseModel):
         ----------
         value: Any
             User input value.
-        info
+        info: ValidationInfo
             Object containing contextual information about field being validated.
 
         Returns
@@ -281,7 +310,7 @@ class Settings(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def cross_validate(cls, data: dict[str, typing.Any]) -> dict[str, typing.Any]:
+    def cross_validate(cls, data: dict[str, Any]) -> dict[str, Any]:
         """
         Function to process and validate user input, this validator handles validation upon model initialization. Since
         `self.validate_field()` already exists, this function will be reserved only for cross validation.

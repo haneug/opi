@@ -4,7 +4,7 @@ import warnings
 from abc import ABC, abstractmethod
 from functools import cached_property
 from pathlib import Path
-from typing import get_type_hints
+from typing import Any, get_type_hints
 
 from pydantic import ConfigDict
 
@@ -42,7 +42,7 @@ _RT = typing.TypeVar("_RT", bound="TaskResults")
 
 class SimpleTask(ABC, typing.Generic[_RT]):
     """
-    Abstract base class for all OPI calculation tasks.
+    Abstract base class for all OPI simple tasks.
 
     Combines a ``TaskSettings`` (what kind of calculation to run) with a
     ``MethodSettings`` (which method/basis/solvent to use) and exposes a
@@ -72,8 +72,8 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         basis_set: str | SimpleKeyword | None = None,
         solvation_model: str | SimpleKeyword | None = None,
         solvent: str | Solvent | None = None,
-        task_settings: "TaskSettings | dict[str, typing.Any] | None" = None,
-        method_settings: "MethodSettings | dict[str, typing.Any] | None" = None,
+        task_settings: "TaskSettings | dict[str, Any] | None" = None,
+        method_settings: "MethodSettings | dict[str, Any] | None" = None,
     ):
         """
         Parameters
@@ -116,7 +116,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
 
         if method is not None:
             resolved_type = MethodSettings.resolve_method_settings_type(method)
-            base_data: dict[str, typing.Any] = {
+            base_data: dict[str, Any] = {
                 k: v
                 for k, v in {
                     "method": method,
@@ -127,7 +127,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
                 if v is not None
             }
             if resolved_method_settings is not None:
-                extra: dict[str, typing.Any] = {
+                extra: dict[str, Any] = {
                     **resolved_method_settings.model_dump(exclude_unset=True),
                     **(resolved_method_settings.model_extra or {}),
                 }
@@ -222,7 +222,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         if isinstance(self._method_settings, resolved_type):
             self._method_settings.method = new_value  # type:ignore
         else:
-            common_fields: dict[str, typing.Any] = {"method": new_value}
+            common_fields: dict[str, Any] = {"method": new_value}
             for field in ("basis_set", "solvation_model", "solvent"):
                 if field in resolved_type.model_fields:
                     val = getattr(self._method_settings, field, None)
@@ -599,7 +599,7 @@ class TaskResults(ABC):
 
     @cached_property
     @abstractmethod
-    def primary_property(self) -> typing.Any:
+    def primary_property(self) -> Any:
         """The most important result for this task type (energy, structure, …)."""
         pass
 
