@@ -74,8 +74,8 @@ python3 job.py
 - exmp051_libxc: Shows modification of DFT LibXC parameters via the method block
 - exmp052_densities: Perform UHF calculation and obtain density and spin-density in AO-basis
 - exmp053_opencosmors: Run OpenCOSMO-RS task
-- exmp054_singlepoint_simpletask: B3LYP/def2-SVP single-point with CPCM(water) using the `SinglePointTask` functionality
-- exmp055_goat_simpletask: GFN2-xTB GOAT conformer search using the `GoatTask` functionality
-- exmp056_freq_simpletask: TPSS/def2-SVP frequency calculation using the `FreqTask` functionality
-- exmp057_opt_simpletask: B3LYP/def2-SVP geometry optimization with CPCM(water) using the `OptTask` functionality
+- exmp057_singlepoint_simpletask: B3LYP/def2-SVP single-point with CPCM(water) using the `SinglePointTask` functionality
 - exmp058_engrad_simpletask: r²SCAN-3c energy & gradient calculation using the `EngradTask` functionality
+- exmp059_opt_simpletask: B3LYP/def2-SVP geometry optimization with CPCM(water) using the `OptTask` functionality
+- exmp060_freq_simpletask: TPSS/def2-SVP frequency calculation using the `FreqTask` functionality
+- exmp061_goat_simpletask: GFN2-xTB GOAT conformer search using the `GoatTask` functionality

@@ -7,7 +7,7 @@ from opi.input.structures import Properties, Structure
 from opi.simple_tasks import GoatSettings, GoatTask
 
 
-def run_exmp058(
+def run_exmp061(
     structure: Structure | None = None, working_dir: Path = Path("RUN")
 ) -> tuple[list[Structure], list[Properties]]:
 
@@ -36,4 +36,4 @@ def run_exmp058(
 
 
 if __name__ == "__main__":
-    run_exmp058()
+    run_exmp061()

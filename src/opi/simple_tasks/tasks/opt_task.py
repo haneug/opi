@@ -1,10 +1,9 @@
 import typing
 
 from opi.input import Input
-from opi.input.simple_keywords import SimpleKeyword, Solvent, Task
+from opi.input.simple_keywords import SimpleKeyword, Task
 from opi.input.simple_keywords.opt import Opt, OptThreshold
 from opi.input.structures import Structure
-from opi.simple_tasks.method_settings import MethodSettings
 from opi.simple_tasks.simple_task import SimpleTask, TaskResults, TaskSettings
 
 
@@ -99,19 +98,6 @@ class OptTask(SimpleTask[OptResults]):
 
     _task_settings: OptSettings
     _results_type = OptResults
-
-    def __init__(
-        self,
-        method: str | SimpleKeyword | None = None,
-        basis_set: str | SimpleKeyword | None = None,
-        solvation_model: str | SimpleKeyword | None = None,
-        solvent: str | Solvent | None = None,
-        task_settings: OptSettings | None = None,
-        method_settings: MethodSettings | None = None,
-    ):
-        super().__init__(
-            method, basis_set, solvation_model, solvent, task_settings, method_settings
-        )
 
     @property
     def opt_threshold(self) -> SimpleKeyword | None:

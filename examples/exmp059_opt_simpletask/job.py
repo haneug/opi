@@ -7,10 +7,10 @@ from opi.simple_tasks import OptResults, OptSettings, OptTask
 from opi.simple_tasks.method_settings import DftSettings
 
 
-def run_exmp056(structure: Structure | None = None, working_dir: Path = Path("RUN")) -> OptResults:
+def run_exmp059(structure: Structure | None = None, working_dir: Path = Path("RUN")) -> OptResults:
     # > if no structure is given read structure from inp.xyz
     if structure is None:
-        structure = Structure.from_xyz("../exmp054_singlepoint_simpletask/inp.xyz")
+        structure = Structure.from_xyz("../exmp057_singlepoint_simpletask/inp.xyz")
 
     # > set up the task
     simple_task = OptTask(
@@ -41,4 +41,4 @@ def run_exmp056(structure: Structure | None = None, working_dir: Path = Path("RU
 
 
 if __name__ == "__main__":
-    run_exmp056()
+    run_exmp059()

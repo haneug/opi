@@ -7,7 +7,7 @@ from opi.input.structures import Structure
 from opi.simple_tasks import SinglePointResults, SinglePointTask
 
 
-def run_exmp054(
+def run_exmp057(
     structure: Structure | None = None, working_dir: Path = Path("RUN")
 ) -> SinglePointResults:
     # > if no structure is given read structure from inp.xyz
@@ -40,4 +40,4 @@ def run_exmp054(
 
 
 if __name__ == "__main__":
-    run_exmp054()
+    run_exmp057()
