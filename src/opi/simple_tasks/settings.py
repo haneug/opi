@@ -105,7 +105,6 @@ class Settings(BaseModel):
 
         return input_object
 
-
     def __str__(self) -> str:
         """
         String representation of `Settings`. Mostly for debugging purposes.
@@ -268,7 +267,6 @@ class Settings(BaseModel):
             new_keyword = validator.find_keyword(value)
 
         return new_keyword
-
 
     @field_validator("*", mode="before")
     @classmethod

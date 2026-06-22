@@ -22,6 +22,7 @@ from opi.input.simple_keywords import (
 )
 from opi.input.simple_keywords.dlpno import Dlpno, PNOThresh
 from opi.input.simple_keywords.scf import Scf, ScfConvergence, ScfSolver, ScfThreshold
+from opi.input.simple_keywords.wft import DLPNOcc
 from opi.simple_tasks.settings import Settings
 
 
@@ -359,7 +360,7 @@ class DlpnoCcSettings(MethodSettings):
         arbitrary_types_allowed=True, validate_assignment=True, extra="forbid"
     )
     _name: str = "dlpnocc"
-    method: typing.Annotated[SimpleKeyword, Dft] | None = None
+    method: typing.Annotated[SimpleKeyword, DLPNOcc] | None = None
     aux_basis: typing.Annotated[SimpleKeyword, AuxBasisSet] | None = None
     pno_thresh: typing.Annotated[SimpleKeyword, PNOThresh] | None = None
     dlpno_led: bool | None = None
