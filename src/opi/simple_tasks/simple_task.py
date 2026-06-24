@@ -178,6 +178,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
 
     @classmethod
     def _get_task_settings_type(cls) -> type[TaskSettings]:
+        """ Get the TaskSettings subclass type associated with the SimpleTask initialized."""
         hints = get_type_hints(cls)
         task_setting_type = hints["_task_settings"]
 
