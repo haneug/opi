@@ -10,6 +10,28 @@ import numpy as np
 
 @dataclass
 class Fcidump:
+    """
+    Reads and stores data from a FCIDUMP file. One and two-electrons integrals are stored as dicts and can be
+    accessed as numpy arrays.
+
+    Attributes
+    --------
+    norb: int
+        Number of active orbitals.
+    nelec: int
+        Number of active electrons.
+    ms2: int
+        Electron spin multiplicity.
+    orbsym: int
+        Symmetry labels of the orbitals.
+    isym: int
+        Overall symmetry of the electronic structure.
+    e_nuc: float
+        Electronic core contribution. Contains the contracted energy of the inactive space.
+    path: Path
+        Path to the FCIDUMP file.
+    """
+
     norb: int
     nelec: int
     ms2: int
@@ -22,7 +44,7 @@ class Fcidump:
 
     @cached_property
     def hcore_matrix(self) -> np.ndarray:
-        """Return the one-electron integrals as a symmetric (norb, norb) matrix."""
+        """Return the one-electron integrals as a symmetric (norb, norb) numpy array."""
         mat = np.zeros((self.norb, self.norb))
         for (i, j), val in self.one_electron.items():
             mat[i - 1, j - 1] = val
@@ -31,7 +53,7 @@ class Fcidump:
 
     @cached_property
     def eri_tensor(self) -> np.ndarray:
-        """Return the two-electron integrals as a (norb, norb, norb, norb) tensor.
+        """Return the two-electron integrals as a (norb, norb, norb, norb) numpy array.
 
         Uses chemist's notation (ij|kl) with 8-fold permutation symmetry applied.
         """
@@ -54,55 +76,86 @@ class Fcidump:
 
     @classmethod
     def parse_fcidump(cls, path: Path | str) -> "Fcidump":
+        """
+        Parse a FCIDUMP file and return the populated `Fcidump` object.
+
+        Raises
+        -------
+        ValueError
+            If the FCIDUMP file cannot be parsed.
+        FileNotFoundError
+            If the FCIDUMP file cannot be found at the given path.
+        """
 
         if isinstance(path, str):
             path = Path(path)
 
+        if not path.is_file():
+            raise FileNotFoundError(f"{cls.__name__}: FCIDUMP file not found at {path}")
+
         with open(path) as f:
             text = f.read()
 
-        # Split header and body
+        # > Split header and body
         end_match = re.search(r"&END|/", text, re.IGNORECASE)
         if end_match is None:
-            raise ValueError(f"Could not find header terminator (&END or /) in {path}")
+            raise ValueError(
+                f"{cls.__name__}: Could not find header terminator (&END or /) in {path}"
+            )
         header = text[: end_match.end()]
         body = text[end_match.end() :]
 
-        # Parse header fields
-        def get_int(key: str) -> int:
-            m = re.search(rf"{key}\s*=\s*(\d+)", header, re.IGNORECASE)
-            return int(m.group(1)) if m else 0
-
-        def get_int_list(key: str) -> list[int]:
-            m = re.search(rf"{key}\s*=\s*([\d,\s]+)", header, re.IGNORECASE)
-            return [int(x) for x in re.split(r"[,\s]+", m.group(1).strip()) if x] if m else []
-
+        # > Parse the header
         dump = cls(
-            norb=get_int("NORB"),
-            nelec=get_int("NELEC"),
-            ms2=get_int("MS2"),
-            orbsym=get_int_list("ORBSYM"),
-            isym=get_int("ISYM"),
+            norb=cls._get_int("NORB", header),
+            nelec=cls._get_int("NELEC", header),
+            ms2=cls._get_int("MS2", header),
+            orbsym=cls._get_int_list("ORBSYM", header),
+            isym=cls._get_int("ISYM", header),
             path=Path(path),
         )
 
-        # Parse integral lines
+        # > Parse the integrals from the body
         for line in body.splitlines():
             parts = line.split()
-            if len(parts) != 5:
+            if not parts:
                 continue
-            val, i, j, k, ll = (
-                float(parts[0]),
-                int(parts[1]),
-                int(parts[2]),
-                int(parts[3]),
-                int(parts[4]),
-            )
+            if len(parts) != 5:
+                raise ValueError(f"{cls.__name__}: Could not parse {line} in {path}")
+            try:
+                val, i, j, k, ll = (
+                    float(parts[0]),
+                    int(parts[1]),
+                    int(parts[2]),
+                    int(parts[3]),
+                    int(parts[4]),
+                )
+            except ValueError:
+                raise ValueError(f"{cls.__name__}: Could not parse {line} in {path}")
+            # > Inactive contribution
             if i == 0 and j == 0 and k == 0 and ll == 0:
                 dump.e_nuc = val
+            # > One-electron matrix
             elif k == 0 and ll == 0:
                 dump.one_electron[(i, j)] = val
+            # > Two-electron tensor
             else:
                 dump.two_electron[(i, j, k, ll)] = val
 
         return dump
+
+    @classmethod
+    def _get_int(cls, key: str, header: str) -> int:
+        """Return the integer value of the given key."""
+        m = re.search(rf"{key}\s*=\s*(\d+)", header, re.IGNORECASE)
+        if m is None:
+            raise ValueError(f"{cls.__name__}: Could not parse {key}")
+        return int(m.group(1))
+
+    @classmethod
+    def _get_int_list(cls, key: str, header: str) -> list[int]:
+        """Return a list of integers corresponding to the given key."""
+        m = re.search(rf"{key}\s*=\s*([\d,\s]+)", header, re.IGNORECASE)
+        if m is None:
+            raise ValueError(f"{cls.__name__}: Could not parse {key}")
+        return [int(x) for x in re.split(r"[,\s]+", m.group(1).strip()) if x]
