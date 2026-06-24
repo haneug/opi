@@ -2,7 +2,6 @@ import shutil
 import typing
 import warnings
 from abc import ABC, abstractmethod
-from functools import cached_property
 from pathlib import Path
 from typing import Any, get_type_hints
 
@@ -34,7 +33,7 @@ class TaskSettings(Settings):
     model_config = ConfigDict(
         arbitrary_types_allowed=True, validate_assignment=True, extra="forbid"
     )
-    task_keyword: typing.Annotated[SimpleKeyword, SimpleKeywordBox]
+    task_keyword: typing.Annotated[SimpleKeyword, SimpleKeywordBox] | None = None
 
 
 _RT = typing.TypeVar("_RT", bound="TaskResults")
@@ -77,6 +76,15 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         input: Input | str | None = None,
     ):
         """
+        The various input parameters, both task and method related are set using this function. The most widely used arguments,
+        like method and basis set are set using arguments that are defined in the init. If the user wants to add additional settings,
+        such as block options like scf maxiter, they can make use of the `task_settings` and `method-settings` arguments, where any additional
+        settings will be parsed, validated and then added to the respective `Settings` class.
+
+        There is an additional optional argument `input`, if the user chooses to directly pass the input to the init, the `SimpleTask` class
+        will forego any validation of input and simply execute the task using the user-given input data. This is recommended for more experienced
+        users that want to add certain simple keywords or block options that are not provided by default.
+
         Parameters
         ----------
         method : str or SimpleKeyword, optional
@@ -104,6 +112,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
             method is provided.
         """
         if input:
+            # Raw input bypasses the typed settings system entirely — no validation.
             if not isinstance(input, Input):
                 self._input_object: Input = Input()
                 self._input_object.add_arbitrary_string(input, pos="top")
@@ -114,11 +123,15 @@ class SimpleTask(ABC, typing.Generic[_RT]):
             self._method_settings = None
 
         else:
+            # Get the intended TaskSettings type from type hints
             task_settings_type = self._get_task_settings_type()
             if isinstance(task_settings, dict):
                 self._task_settings = task_settings_type.model_validate(task_settings)
             else:
-                self._task_settings = task_settings or task_settings_type()  # type: ignore[call-arg]
+                # None falls back to a default instance so there's always a settings object.
+                # In the case that a TaskSettings object is passed, it will be merged with the default initializaition
+                # of the TaskSettings object. This is simply to ensure there is always a TaskSettings object.
+                self._task_settings = task_settings or task_settings_type()
 
             resolved_method_settings: MethodSettings | None = (
                 MethodSettings(**method_settings)
@@ -127,7 +140,9 @@ class SimpleTask(ABC, typing.Generic[_RT]):
             )
 
             if method is not None:
+                # Here the type of MethodSettings class will be resolved depending on which method was selected.
                 resolved_type = MethodSettings.resolve_method_settings_type(method)
+                # MethodSettings object is created with the basic essential input parameters.
                 base_data: dict[str, typing.Any] = {
                     k: v
                     for k, v in {
@@ -139,14 +154,20 @@ class SimpleTask(ABC, typing.Generic[_RT]):
                     if v is not None
                 }
                 if resolved_method_settings is not None:
+                    # If there are other options defined over method_settings argument, they will be merged with the existing
+                    # MethodSettings object here.
+                    # model_extra captures plugin-defined fields absent from model_fields.
                     extra: dict[str, typing.Any] = {
                         **resolved_method_settings.model_dump(exclude_unset=True),
                         **(resolved_method_settings.model_extra or {}),
                     }
+                    # base_data last so shorthand args override method_settings fields.
                     self._method_settings = resolved_type(**{**extra, **base_data})
                 else:
+                    # if method_settings argument is None, simple the methodSettings class with the base input parameters will be defined.
                     self._method_settings = resolved_type(**base_data)
             else:
+                # raise error if no method is given
                 if resolved_method_settings is None:
                     raise ValueError(
                         "Either 'method' or a 'method_settings' object with a method must be provided"
@@ -232,10 +253,12 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         if not hasattr(self._method_settings, "method"):
             raise AttributeError("method is not defined in method_settings object")
         if new_value is None:
+            # Set the method to None and skip resolving the type.
             self._method_settings.method = None
             return
         resolved_type = MethodSettings.resolve_method_settings_type(new_value)
         if isinstance(self._method_settings, resolved_type):
+            # Add type:ignore since the resolving of string to SimpleKeyword happens in validation of Settings.
             self._method_settings.method = new_value  # type:ignore
         else:
             common_fields: dict[str, Any] = {"method": new_value}
