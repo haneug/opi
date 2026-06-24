@@ -598,7 +598,7 @@ class TaskResults(ABC):
         """
         self.calc_object = calc_object
 
-    @cached_property
+    @property
     def output(self) -> Output:
         """
         Parsed ORCA output.
@@ -614,18 +614,18 @@ class TaskResults(ABC):
         out.parse()
         return out
 
-    @cached_property
+    @property
     def status(self) -> bool:
         """``True`` if the job terminated normally and SCF converged."""
         return self.output.terminated_normally()
 
-    @cached_property
+    @property
     @abstractmethod
     def primary_property(self) -> Any:
         """The most important result for this task type (energy, structure, …)."""
         pass
 
-    @cached_property
+    @property
     def final_energy(self) -> float:
         """The final energy of the calculation.
 

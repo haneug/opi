@@ -99,7 +99,7 @@ class Settings(BaseModel):
                         input_object.add_blocks(block_instant)
                     else:
                         # Merge with any existing block of this type so no other attributes are lost
-                        existing_block = next(iter(input_object.get_blocks(block_type).values()))
+                        existing_block = input_object.get_blocks(block_type)[block_type]
                         new_block = block_instant | existing_block
                         input_object.add_blocks(new_block, overwrite=True)
 
