@@ -1,10 +1,9 @@
 import typing
 
 from opi.input import Input
-from opi.input.simple_keywords import SimpleKeyword, Solvent, Task
+from opi.input.simple_keywords import SimpleKeyword, Task
 from opi.input.simple_keywords.opt import Opt, OptThreshold
 from opi.input.structures import Structure
-from opi.simple_tasks import MethodSettings
 from opi.simple_tasks.simple_task import SimpleTask, TaskResults, TaskSettings
 
 
