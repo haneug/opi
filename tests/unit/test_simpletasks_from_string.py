@@ -61,7 +61,7 @@ def test_from_string_keywords_without_exclamation(tmp_path: Path) -> None:
             basename="test",
             working_dir=tmp_path / "RUN",
         )
-    inp = result.calc_object.input
+    inp = result.calculator.input
     assert inp.has_simple_keywords(SimpleKeyword("B3LYP"), SimpleKeyword("def2-SVP")) == (
         True,
         True,
@@ -78,7 +78,7 @@ def test_from_string_strips_exclamation_prefix(tmp_path: Path) -> None:
             basename="test",
             working_dir=tmp_path / "RUN",
         )
-    inp = result.calc_object.input
+    inp = result.calculator.input
     assert inp.has_simple_keywords(SimpleKeyword("B3LYP"), SimpleKeyword("def2-SVP")) == (
         True,
         True,
@@ -130,7 +130,7 @@ def test_from_string_sets_ncores(tmp_path: Path) -> None:
         result = SinglePointTask.from_string(
             "B3LYP", basename="test", working_dir=tmp_path / "RUN", ncores=4
         )
-    assert result.calc_object.input.ncores == 4
+    assert result.calculator.input.ncores == 4
 
 
 @pytest.mark.unit
@@ -141,7 +141,7 @@ def test_from_string_sets_memory(tmp_path: Path) -> None:
         result = SinglePointTask.from_string(
             "B3LYP", basename="test", working_dir=tmp_path / "RUN", memory=2000
         )
-    assert result.calc_object.input.memory == 2000
+    assert result.calculator.input.memory == 2000
 
 
 @pytest.mark.unit
@@ -157,7 +157,7 @@ def test_from_string_sets_moinp(tmp_path: Path) -> None:
             working_dir=tmp_path / "RUN",
             moinp=mo_file,
         )
-    assert result.calc_object.input.moinp == mo_file
+    assert result.calculator.input.moinp == mo_file
 
 
 @pytest.mark.unit
@@ -177,4 +177,4 @@ def test_from_string_assigns_structure(tmp_path: Path) -> None:
             working_dir=tmp_path / "RUN",
             structure=h2,
         )
-    assert result.calc_object.structure is h2
+    assert result.calculator.structure is h2

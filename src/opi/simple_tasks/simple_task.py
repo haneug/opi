@@ -1,3 +1,4 @@
+import os
 import shutil
 import typing
 import warnings
@@ -195,7 +196,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         return self._method_settings if self._method_settings else None
 
     @property
-    def input_object(self) -> Input:
+    def input(self) -> Input:
         """
         Returns the ``Input`` object for this task, with ``task_settings`` and
         ``method_settings`` applied on top of any user modifications.
@@ -217,8 +218,8 @@ class SimpleTask(ABC, typing.Generic[_RT]):
 
         return self._input_object
 
-    @input_object.setter
-    def input_object(self, value: Input) -> None:
+    @input.setter
+    def input(self, value: Input) -> None:
         self._input_object = value
 
     @property
@@ -498,7 +499,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
                 shutil.rmtree(working_dir)
             working_dir.mkdir()
 
-        inp = self.input_object
+        inp = self.input
 
         if ncores is not None:
             inp.ncores = ncores
@@ -580,7 +581,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
             If ``use_previous_orbitals=True`` and the ``.gbw`` file from the
             previous run is missing.
         """
-        prev_calc = previous_results.calc_object
+        prev_calc = previous_results.calculator
 
         basename = basename if basename else prev_calc.basename
         struct = struct if struct else prev_calc.structure
@@ -613,14 +614,14 @@ class TaskResults(ABC):
     ``primary_property``.
     """
 
-    def __init__(self, calc_object: Calculator):
+    def __init__(self, calculator: Calculator):
         """
         Parameters
         ----------
-        calc_object : Calculator
+        calculator : Calculator
             The calculator that ran the calculation.
         """
-        self.calc_object = calc_object
+        self.calculator = calculator
 
     @property
     def output(self) -> Output:
@@ -631,10 +632,10 @@ class TaskResults(ABC):
         that result objects can be created without immediately hitting the
         filesystem.
         """
-        if not self.calc_object:
+        if not self.calculator:
             raise ValueError("calc_object not set")
 
-        out = self.calc_object.get_output()
+        out = self.calculator.get_output()
         out.parse()
         return out
 

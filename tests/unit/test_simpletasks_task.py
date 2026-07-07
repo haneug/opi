@@ -19,7 +19,7 @@ from opi.simple_tasks.method_settings import DftSettings, SqmSettings
 """
 Unit tests for SimpleTask subclasses and TaskSettings:
 - Constructor argument validation (method dispatch, dict args, no-method error)
-- input_object builds correct simple keywords for each task type
+- input builds correct simple keywords for each task type
 - OptSettings flag combinations (opt_h / lopt / optrigid / opt_maxiter)
 - GoatSettings boolean flags (goat_react / goat_diversity / goat_explore)
 - OptTask convenience property forwarding to task_settings
@@ -73,7 +73,7 @@ def test_simple_task_dict_task_settings() -> None:
 
 
 # ---------------------------------------------------------------------------
-# input_object — task keyword
+# input — task keyword
 # ---------------------------------------------------------------------------
 
 
@@ -89,17 +89,17 @@ def test_simple_task_dict_task_settings() -> None:
         (GoatTask, Goat.GOAT),
     ],
 )
-def test_input_object_has_task_keyword(task_cls: type, expected_kw: SimpleKeyword) -> None:
-    """input_object contains the primary task keyword for each task type."""
-    inp = task_cls(method="pbe").input_object
+def test_input_has_task_keyword(task_cls: type, expected_kw: SimpleKeyword) -> None:
+    """input contains the primary task keyword for each task type."""
+    inp = task_cls(method="pbe").input
     assert inp.has_simple_keywords(expected_kw) == (True,)
 
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
-def test_input_object_has_method_and_basis_set() -> None:
-    """input_object contains the task keyword, method, and basis-set keywords."""
-    inp = SinglePointTask(method="pbe", basis_set="def2-svp").input_object
+def test_input_has_method_and_basis_set() -> None:
+    """input contains the task keyword, method, and basis-set keywords."""
+    inp = SinglePointTask(method="pbe", basis_set="def2-svp").input
     assert inp.has_simple_keywords(Task.SP, Dft.PBE, BasisSet.DEF2_SVP) == (True, True, True)
 
 
@@ -237,101 +237,101 @@ def test_basis_set_getter_and_setter() -> None:
 
 
 # ---------------------------------------------------------------------------
-# input_object caching
+# input caching
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
-def test_input_object_is_cached() -> None:
-    """Accessing input_object twice returns the same object instance."""
+def test_input_is_cached() -> None:
+    """Accessing input twice returns the same object instance."""
     task = SinglePointTask(method="pbe")
-    assert task.input_object is task.input_object
+    assert task.input is task.input
 
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_user_added_keyword_persists() -> None:
-    """A keyword added directly to input_object is visible on every subsequent access."""
+    """A keyword added directly to input is visible on every subsequent access."""
     task = SinglePointTask(method="pbe")
     kw = SimpleKeyword("NORI")
-    task.input_object.add_simple_keywords(kw)
-    assert task.input_object.has_simple_keywords(kw) == (True,)
-    assert task.input_object.has_simple_keywords(kw) == (True,)
+    task.input.add_simple_keywords(kw)
+    assert task.input.has_simple_keywords(kw) == (True,)
+    assert task.input.has_simple_keywords(kw) == (True,)
 
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_user_added_block_persists() -> None:
-    """A block added directly to input_object is visible on every subsequent access."""
+    """A block added directly to input is visible on every subsequent access."""
     task = SinglePointTask(method="pbe")
     block = BlockScf(maxiter=500)
-    task.input_object.add_blocks(block)
-    assert task.input_object.has_blocks(BlockScf()) == (True,)
-    assert task.input_object.blocks[BlockScf].maxiter == 500
+    task.input.add_blocks(block)
+    assert task.input.has_blocks(BlockScf()) == (True,)
+    assert task.input.blocks[BlockScf].maxiter == 500
 
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_user_modified_block_persists() -> None:
-    """Mutating an existing block on input_object is reflected on every subsequent access."""
+    """Mutating an existing block on input is reflected on every subsequent access."""
     task = OptTask(method="pbe", task_settings={"opt_maxiter": 50})
-    task.input_object.blocks[BlockGeom].maxiter = 99
-    assert task.input_object.blocks[BlockGeom].maxiter == 99
+    task.input.blocks[BlockGeom].maxiter = 99
+    assert task.input.blocks[BlockGeom].maxiter == 99
 
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_settings_keyword_restored_after_user_removal() -> None:
-    """A method-controlled keyword removed from input_object is re-added on the next access."""
+    """A method-controlled keyword removed from input is re-added on the next access."""
     task = SinglePointTask(method="pbe", basis_set="def2-svp")
-    task.input_object.remove_simple_keywords(BasisSet.DEF2_SVP)
-    assert task.input_object.has_simple_keywords(BasisSet.DEF2_SVP) == (True,)
+    task.input.remove_simple_keywords(BasisSet.DEF2_SVP)
+    assert task.input.has_simple_keywords(BasisSet.DEF2_SVP) == (True,)
 
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_user_set_ncores_persists() -> None:
-    """Setting ncores on input_object is preserved across accesses."""
+    """Setting ncores on input is preserved across accesses."""
     task = SinglePointTask(method="pbe")
-    task.input_object.ncores = 8
-    assert task.input_object.ncores == 8
+    task.input.ncores = 8
+    assert task.input.ncores == 8
 
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_user_set_memory_persists() -> None:
-    """Setting memory on input_object is preserved across accesses."""
+    """Setting memory on input is preserved across accesses."""
     task = SinglePointTask(method="pbe")
-    task.input_object.memory = 4096
-    assert task.input_object.memory == 4096
+    task.input.memory = 4096
+    assert task.input.memory == 4096
 
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_user_added_arbitrary_string_persists() -> None:
-    """An arbitrary string added to input_object is preserved across accesses."""
+    """An arbitrary string added to input is preserved across accesses."""
     task = SinglePointTask(method="pbe")
-    task.input_object.add_arbitrary_string(
+    task.input.add_arbitrary_string(
         "% some custom block\nend", pos=ArbitraryStringPos.BOTTOM
     )
-    assert len(task.input_object.arbitrary_strings) == 1
-    assert len(task.input_object.arbitrary_strings) == 1
+    assert len(task.input.arbitrary_strings) == 1
+    assert len(task.input.arbitrary_strings) == 1
 
 
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_multiple_user_modifications_all_persist() -> None:
-    """Multiple independent modifications to input_object all survive repeated accesses."""
+    """Multiple independent modifications to input all survive repeated accesses."""
     task = SinglePointTask(method="pbe")
     kw = SimpleKeyword("RIJCOSX")
     block = BlockScf(maxiter=300)
 
-    task.input_object.add_simple_keywords(kw)
-    task.input_object.add_blocks(block)
-    task.input_object.ncores = 4
+    task.input.add_simple_keywords(kw)
+    task.input.add_blocks(block)
+    task.input.ncores = 4
 
-    inp = task.input_object
+    inp = task.input
     assert inp.has_simple_keywords(kw) == (True,)
     assert inp.has_blocks(BlockScf()) == (True,)
     assert inp.blocks[BlockScf].maxiter == 300

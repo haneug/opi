@@ -21,7 +21,7 @@ def run_exmp057(
     # > there are task and method-specific settings, these can be set through kwargs
 
     # > It is possible to modify the input object associated with the task object for more specific settings
-    simple_task.input_object.add_simple_keywords(AtomicCharge.HIRSHFELD)
+    simple_task.input.add_simple_keywords(AtomicCharge.HIRSHFELD)
 
     # > run the calculation with given data
     singlepoint_result = simple_task.run("job", structure, working_dir=working_dir)
