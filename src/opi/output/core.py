@@ -2752,7 +2752,7 @@ class Output:
         ```
         %output
            dumpactints true
-        end 
+        end
         ```
         See `BlockOutput` for the related block option.
 
