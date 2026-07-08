@@ -155,7 +155,7 @@ class Fcidump:
     @classmethod
     def _get_int_list(cls, key: str, header: str) -> list[int]:
         """Return a list of integers corresponding to the given key."""
-        m = re.search(rf"{key}\s*=\s*([\d,\s]+)", header, re.IGNORECASE)
+        m = re.search(rf"{key}\s*=\s*(\d+(\s*,\s*\d+)+)", header, re.IGNORECASE)
         if m is None:
             raise ValueError(f"{cls.__name__}: Could not parse {key}")
         return [int(x) for x in re.split(r"[,\s]+", m.group(1).strip()) if x]
