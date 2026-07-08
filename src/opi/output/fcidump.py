@@ -75,9 +75,12 @@ class Fcidump:
         return tensor
 
     @classmethod
-    def parse_fcidump(cls, path: Path | str) -> "Fcidump":
+    def from_file(cls, path: Path | str) -> "Fcidump":
         """
         Parse a FCIDUMP file and return the populated `Fcidump` object.
+        The FCIDUMP file is documented in the paper:
+        Knowles, P. J.; Handy, N. C. A Determinant Based Full Configuration Interaction Program.
+        Computer Physics Communications 1989, 54, 75–83. https://doi.org/10.1016/0010-4655(89)90033-7
 
         Raises
         -------
@@ -146,7 +149,7 @@ class Fcidump:
 
     @classmethod
     def _get_int(cls, key: str, header: str) -> int:
-        """Return the integer value of the given key."""
+        """Return the positive integer value of the given key."""
         m = re.search(rf"{key}\s*=\s*(\d+)", header, re.IGNORECASE)
         if m is None:
             raise ValueError(f"{cls.__name__}: Could not parse {key}")

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from opi.output.fcidump_parser import Fcidump
+from opi.output.fcidump import Fcidump
 
 
 @pytest.mark.unit
@@ -26,7 +26,7 @@ def test_parse_fcidump_header(tmp_path: Path) -> None:
     fci_file = tmp_path / "test.fcidump"
     fci_file.write_text(fcidump_text)
 
-    dump = Fcidump.parse_fcidump(fci_file)
+    dump = Fcidump.from_file(fci_file)
 
     assert dump.norb == 2
     assert dump.nelec == 2
