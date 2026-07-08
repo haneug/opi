@@ -435,13 +435,13 @@ class SimpleTask(ABC, typing.Generic[_RT]):
 
         calc.write_and_run()
 
-        return cls._results_type(calc_object=calc)
+        return cls._results_type(calculator=calc)
 
     def run(
         self,
         basename: str,
-        struct: Structure | BaseStructureFile,
-        working_dir: Path = Path("RUN"),
+        structure: Structure | BaseStructureFile,
+        working_dir: Path | str | os.PathLike[str] = Path("RUN"),
         ncores: int | None = None,
         memory: int | None = None,
         moinp: Path | None = None,
@@ -458,7 +458,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         ----------
         basename : str
             Base name for the calculation.
-        struct : Structure or BaseStructureFile
+        structure : Structure or BaseStructureFile
             The input structure for the calculation.
         working_dir : pathlib.Path, optional
             Directory in which the calculation will be executed.
@@ -480,6 +480,8 @@ class SimpleTask(ABC, typing.Generic[_RT]):
             An instance of the configured results type containing the results
             of the calculation.
         """
+        working_dir = Path(working_dir)
+
         if strict:
             # Must already exist
             if not working_dir.exists():
@@ -511,18 +513,18 @@ class SimpleTask(ABC, typing.Generic[_RT]):
             inp.moinp = moinp
 
         calc = Calculator(basename, working_dir=working_dir)
-        calc.structure = struct
+        calc.structure = structure
         calc.input = inp
 
         calc.write_and_run()
 
-        return self._results_type(calc_object=calc)
+        return self._results_type(calculator=calc)
 
     def restart(
         self,
         previous_results: "TaskResults",
         basename: str | None = None,
-        struct: Structure | BaseStructureFile | None = None,
+        structure: Structure | BaseStructureFile | None = None,
         working_dir: Path | None = None,
         ncores: int | None = None,
         memory: int | None = None,
@@ -547,7 +549,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         basename : str, optional
             Job name for the new calculation.  Defaults to the basename of the
             previous run.
-        struct : Structure or BaseStructureFile, optional
+        structure : Structure or BaseStructureFile, optional
             Input structure.  Defaults to the structure used in the previous
             run.  Raises ``ValueError`` if no structure can be determined.
         working_dir : Path, optional
@@ -584,7 +586,7 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         prev_calc = previous_results.calculator
 
         basename = basename if basename else prev_calc.basename
-        struct = struct if struct else prev_calc.structure
+        struct = structure if structure else prev_calc.structure
         if struct is None:
             raise ValueError(
                 "No structure available for restart: previous calculation had no structure set"
@@ -633,7 +635,7 @@ class TaskResults(ABC):
         filesystem.
         """
         if not self.calculator:
-            raise ValueError("calc_object not set")
+            raise ValueError("calculator not set")
 
         out = self.calculator.get_output()
         out.parse()
