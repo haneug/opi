@@ -37,6 +37,53 @@ def test_parse_fcidump_header(tmp_path: Path) -> None:
 
 
 @pytest.mark.unit
+def test_get_int() -> None:
+    """`_get_int` extracts integer header values, tolerating whitespace and mixed-case keys."""
+    header = "&FCI\n NORB= 12, NELEC=8,\n ms2 = 0,\n/"
+
+    assert Fcidump._get_int("NORB", header) == 12
+    assert Fcidump._get_int("NELEC", header) == 8
+    # key matching is case-insensitive
+    assert Fcidump._get_int("MS2", header) == 0
+
+
+@pytest.mark.unit
+def test_get_int_missing_key_raises() -> None:
+    """`_get_int` raises a ValueError naming the key when it is absent from the header."""
+    with pytest.raises(ValueError, match="ISYM"):
+        Fcidump._get_int("ISYM", "&FCI\n NORB= 2,\n/")
+
+
+@pytest.mark.unit
+def test_get_int_negative_value_raises() -> None:
+    """`_get_int` only accepts non-negative integers, so a negative value raises a ValueError."""
+    with pytest.raises(ValueError, match="MS2"):
+        Fcidump._get_int("MS2", "&FCI\n MS2= -2,\n/")
+
+
+@pytest.mark.unit
+def test_get_int_list() -> None:
+    """`_get_int_list` parses comma-separated integers, tolerating whitespace and mixed case."""
+    assert Fcidump._get_int_list("ORBSYM", "ORBSYM=1,1,2,1,") == [1, 1, 2, 1]
+    # tolerates whitespace around the separators and is case-insensitive
+    assert Fcidump._get_int_list("ORBSYM", "orbsym = 1 , 2 , 3,") == [1, 2, 3]
+
+
+@pytest.mark.unit
+def test_get_int_list_missing_key_raises() -> None:
+    """`_get_int_list` raises a ValueError naming the key when it is absent from the header."""
+    with pytest.raises(ValueError, match="ORBSYM"):
+        Fcidump._get_int_list("ORBSYM", "&FCI\n NORB= 2,\n/")
+
+
+@pytest.mark.unit
+def test_get_int_list_negative_value_raises() -> None:
+    """`_get_int_list` only accepts non-negative integers, so a negative entry raises a ValueError."""
+    with pytest.raises(ValueError, match="ORBSYM"):
+        Fcidump._get_int_list("ORBSYM", "ORBSYM=-1,1,")
+
+
+@pytest.mark.unit
 def test_hcore_matrix_shape_and_symmetry() -> None:
     dump = Fcidump(
         norb=2,
