@@ -1,4 +1,3 @@
-import textwrap
 from pathlib import Path
 
 import pytest
@@ -8,7 +7,7 @@ from opi.output.fcidump import Fcidump
 
 @pytest.mark.unit
 def test_parse_fcidump_header(tmp_path: Path) -> None:
-    fcidump_text = textwrap.dedent("""\
+    fcidump_text = """
          &FCI
           NORB= 2, NELEC= 2, MS2= 0,
           ORBSYM=1,1,
@@ -22,7 +21,7 @@ def test_parse_fcidump_header(tmp_path: Path) -> None:
           0.0987654321  2  1  0  0
           0.0500000000  2  2  0  0
          -1.2345678901  0  0  0  0
-    """)
+    """
     fci_file = tmp_path / "test.fcidump"
     fci_file.write_text(fcidump_text)
 
