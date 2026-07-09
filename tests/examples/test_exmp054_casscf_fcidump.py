@@ -5,6 +5,25 @@ from examples.exmp054_casscf_fcidump.job import run_exmp054
 from opi.input.structures import Structure
 
 
+def _naive_eri(two_electron: dict, norb: int) -> np.ndarray:
+    """Independent, unvectorized reference implementation for differential testing."""
+    tensor = np.zeros((norb,) * 4)
+    for (i, j, k, ll), val in two_electron.items():
+        a, b, c, d = i - 1, j - 1, k - 1, ll - 1
+        for p, q, r, s in [
+            (a, b, c, d),
+            (b, a, c, d),
+            (a, b, d, c),
+            (b, a, d, c),
+            (c, d, a, b),
+            (d, c, a, b),
+            (c, d, b, a),
+            (d, c, b, a),
+        ]:
+            tensor[p, q, r, s] = val
+    return tensor
+
+
 @pytest.mark.examples
 @pytest.mark.orca
 def test_exmp054_casscf_fcidump(example_input_file, tmp_path) -> None:
@@ -28,5 +47,25 @@ def test_exmp054_casscf_fcidump(example_input_file, tmp_path) -> None:
 
     # hcore must be symmetric
     assert np.allclose(fcidump.hcore_matrix, fcidump.hcore_matrix.T)
-    # eri must satisfy (ij|kl) == (kl|ij)
-    assert np.allclose(fcidump.eri_tensor, fcidump.eri_tensor.transpose(2, 3, 0, 1))
+
+    # eri_tensor must agree with the object's own parsed source at every
+    # symmetry-equivalent position -- catches an all-zero or misplaced tensor
+    # that would still pass the transpose check above.
+    t = fcidump.eri_tensor
+    for (i, j, k, ll), val in fcidump.two_electron.items():
+        a, b, c, d = i - 1, j - 1, k - 1, ll - 1
+        for p, q, r, s in [
+            (a, b, c, d),
+            (b, a, c, d),
+            (a, b, d, c),
+            (b, a, d, c),
+            (c, d, a, b),
+            (d, c, a, b),
+            (c, d, b, a),
+            (d, c, b, a),
+        ]:
+            assert t[p, q, r, s] == pytest.approx(val)
+
+    # differential test: vectorized eri_tensor must match an independently
+    # written, unvectorized reference implementation on this same real data
+    assert np.allclose(fcidump.eri_tensor, _naive_eri(fcidump.two_electron, norb))

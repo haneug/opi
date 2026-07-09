@@ -12,7 +12,7 @@ import numpy as np
 class Fcidump:
     """
     Reads and stores data from a FCIDUMP file. One and two-electrons integrals are stored as dicts and can be
-    accessed as numpy arrays.
+    accessed as numpy arrays via `hcore_matrix` and `eri_tensor`.
 
     Attributes
     --------
@@ -26,6 +26,10 @@ class Fcidump:
         Symmetry labels of the orbitals.
     isym: int
         Overall symmetry of the electronic structure.
+    one_electron: dict[tuple[int, int], float]
+        Dictionary that contains the one-electron integrals.
+    two_electron: dict[tuple[int, int, int, int], float]
+        Dictionary that contains the two-electron integrals.
     e_nuc: float
         Electronic core contribution. Contains the contracted energy of the inactive space.
     path: Path
@@ -58,20 +62,33 @@ class Fcidump:
         Uses chemist's notation (ij|kl) with 8-fold permutation symmetry applied.
         """
         tensor = np.zeros((self.norb,) * 4)
-        # > use ll instead of l to satisfy ruff
-        for (i, j, k, ll), val in self.two_electron.items():
-            a, b, c, d = i - 1, j - 1, k - 1, ll - 1
-            for p, q, r, s in [
-                (a, b, c, d),
-                (b, a, c, d),
-                (a, b, d, c),
-                (b, a, d, c),
-                (c, d, a, b),
-                (d, c, a, b),
-                (c, d, b, a),
-                (d, c, b, a),
-            ]:
-                tensor[p, q, r, s] = val
+
+        # > Pull all stored indices/values into arrays once
+        idx = np.array(list(self.two_electron.keys()), dtype=np.int64) - 1  # (norb, 4)
+        vals = np.array(list(self.two_electron.values()), dtype=np.float64)  # (norb,)
+        a, b, c, d = idx[:, 0], idx[:, 1], idx[:, 2], idx[:, 3]
+
+        # > Build all 8 permutations as stacked index arrays
+        perms = [
+            (a, b, c, d),
+            (b, a, c, d),
+            (a, b, d, c),
+            (b, a, d, c),
+            (c, d, a, b),
+            (d, c, a, b),
+            (c, d, b, a),
+            (d, c, b, a),
+        ]
+        # > Concatenate the different permutations of the index arrays
+        p = np.concatenate([p[0] for p in perms])
+        q = np.concatenate([p[1] for p in perms])
+        r = np.concatenate([p[2] for p in perms])
+        s = np.concatenate([p[3] for p in perms])
+        # > Set up a value array with the same 8 x norb dimension
+        v = np.tile(vals, 8)
+
+        # > Vectorized generation of the eri array
+        tensor[p, q, r, s] = v
         return tensor
 
     @classmethod
@@ -89,15 +106,12 @@ class Fcidump:
         FileNotFoundError
             If the FCIDUMP file cannot be found at the given path.
         """
-
-        if isinstance(path, str):
-            path = Path(path)
+        path = Path(path)
 
         if not path.is_file():
             raise FileNotFoundError(f"{cls.__name__}: FCIDUMP file not found at {path}")
 
-        with open(path) as f:
-            text = f.read()
+        text = path.read_text()
 
         # > Split header and body
         end_match = re.search(r"&END|/", text, re.IGNORECASE)
