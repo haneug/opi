@@ -48,7 +48,7 @@ def run_exmp054(
     print("CASSCF energy")
     print(output.results_properties.geometries[0].energy[0].totalenergy[0][0])
 
-    # > retrieve the path to the fcidump file
+    # > parse the fcidump file
     fcidump = output.get_fcidump()
 
     if fcidump is None:

@@ -21,8 +21,8 @@ class Fcidump:
     nelec: int
         Number of active electrons.
     ms2: int
-        Electron spin multiplicity.
-    orbsym: int
+        Twice the total spin projection, i.e. the difference of alpha and beta electrons.
+    orbsym: list[int]
         Symmetry labels of the orbitals.
     isym: int
         Overall symmetry of the electronic structure.
@@ -30,8 +30,10 @@ class Fcidump:
         Dictionary that contains the one-electron integrals.
     two_electron: dict[tuple[int, int, int, int], float]
         Dictionary that contains the two-electron integrals.
+    orbital_energies: dict[int, float]
+        Dictionary that contains the orbital energies, if present in the FCIDUMP file.
     e_nuc: float
-        Electronic core contribution. Contains the contracted energy of the inactive space.
+        Core energy contribution. Contains the contracted energy of the inactive space.
     path: Path
         Path to the FCIDUMP file.
     """
@@ -43,6 +45,7 @@ class Fcidump:
     isym: int
     one_electron: dict[tuple[int, int], float] = field(default_factory=dict)
     two_electron: dict[tuple[int, int, int, int], float] = field(default_factory=dict)
+    orbital_energies: dict[int, float] = field(default_factory=dict)
     e_nuc: float = 0.0
     path: Path = field(default_factory=Path)
 
@@ -62,14 +65,16 @@ class Fcidump:
         Uses chemist's notation (ij|kl) with 8-fold permutation symmetry applied.
         """
         tensor = np.zeros((self.norb,) * 4)
+        if not self.two_electron:
+            return tensor
 
         # > Pull all stored indices/values into arrays once
-        idx = np.array(list(self.two_electron.keys()), dtype=np.int64) - 1  # (norb, 4)
-        vals = np.array(list(self.two_electron.values()), dtype=np.float64)  # (norb,)
+        idx = np.array(list(self.two_electron.keys()), dtype=np.int64) - 1  # (n_integrals, 4)
+        vals = np.array(list(self.two_electron.values()), dtype=np.float64)  # (n_integrals,)
         a, b, c, d = idx[:, 0], idx[:, 1], idx[:, 2], idx[:, 3]
 
-        # > Build all 8 permutations as stacked index arrays
-        perms = [
+        # > Vectorized assignment for each of the 8 symmetry-equivalent index permutations
+        for p, q, r, s in (
             (a, b, c, d),
             (b, a, c, d),
             (a, b, d, c),
@@ -78,17 +83,8 @@ class Fcidump:
             (d, c, a, b),
             (c, d, b, a),
             (d, c, b, a),
-        ]
-        # > Concatenate the different permutations of the index arrays
-        p = np.concatenate([p[0] for p in perms])
-        q = np.concatenate([p[1] for p in perms])
-        r = np.concatenate([p[2] for p in perms])
-        s = np.concatenate([p[3] for p in perms])
-        # > Set up a value array with the same 8 x norb dimension
-        v = np.tile(vals, 8)
-
-        # > Vectorized generation of the eri array
-        tensor[p, q, r, s] = v
+        ):
+            tensor[p, q, r, s] = vals
         return tensor
 
     @classmethod
@@ -152,6 +148,9 @@ class Fcidump:
             # > Inactive contribution
             if i == 0 and j == 0 and k == 0 and ll == 0:
                 dump.e_nuc = val
+            # > Orbital energies (not written by ORCA, but by some other programs)
+            elif j == 0 and k == 0 and ll == 0:
+                dump.orbital_energies[i] = val
             # > One-electron matrix
             elif k == 0 and ll == 0:
                 dump.one_electron[(i, j)] = val
@@ -171,8 +170,14 @@ class Fcidump:
 
     @classmethod
     def _get_int_list(cls, key: str, header: str) -> list[int]:
-        """Return a list of integers corresponding to the given key."""
-        m = re.search(rf"{key}\s*=\s*(\d+(\s*,\s*\d+)+)", header, re.IGNORECASE)
+        """Return a list of non-negative integers corresponding to the given key."""
+        m = re.search(rf"{key}\s*=\s*([-\d\s,]+)", header, re.IGNORECASE)
         if m is None:
             raise ValueError(f"{cls.__name__}: Could not parse {key}")
-        return [int(x) for x in re.split(r"[,\s]+", m.group(1).strip()) if x]
+        try:
+            values = [int(x) for x in re.split(r"[,\s]+", m.group(1).strip()) if x]
+        except ValueError:
+            raise ValueError(f"{cls.__name__}: Could not parse {key}")
+        if not values or any(v < 0 for v in values):
+            raise ValueError(f"{cls.__name__}: Could not parse {key}")
+        return values

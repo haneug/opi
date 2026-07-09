@@ -6,6 +6,7 @@ from opi.output.fcidump import Fcidump
 
 
 @pytest.mark.unit
+@pytest.mark.output
 def test_parse_fcidump_header(tmp_path: Path) -> None:
     fcidump_text = """
          &FCI
@@ -36,6 +37,7 @@ def test_parse_fcidump_header(tmp_path: Path) -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.output
 def test_get_int() -> None:
     """`_get_int` extracts integer header values, tolerating whitespace and mixed-case keys."""
     header = "&FCI\n NORB= 12, NELEC=8,\n ms2 = 0,\n/"
@@ -47,6 +49,7 @@ def test_get_int() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.output
 def test_get_int_missing_key_raises() -> None:
     """`_get_int` raises a ValueError naming the key when it is absent from the header."""
     with pytest.raises(ValueError, match="ISYM"):
@@ -54,6 +57,7 @@ def test_get_int_missing_key_raises() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.output
 def test_get_int_negative_value_raises() -> None:
     """`_get_int` only accepts non-negative integers, so a negative value raises a ValueError."""
     with pytest.raises(ValueError, match="MS2"):
@@ -61,14 +65,18 @@ def test_get_int_negative_value_raises() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.output
 def test_get_int_list() -> None:
     """`_get_int_list` parses comma-separated integers, tolerating whitespace and mixed case."""
     assert Fcidump._get_int_list("ORBSYM", "ORBSYM=1,1,2,1,") == [1, 1, 2, 1]
     # tolerates whitespace around the separators and is case-insensitive
     assert Fcidump._get_int_list("ORBSYM", "orbsym = 1 , 2 , 3,") == [1, 2, 3]
+    # a single-entry list (norb=1) must parse as well
+    assert Fcidump._get_int_list("ORBSYM", "ORBSYM=1,") == [1]
 
 
 @pytest.mark.unit
+@pytest.mark.output
 def test_get_int_list_missing_key_raises() -> None:
     """`_get_int_list` raises a ValueError naming the key when it is absent from the header."""
     with pytest.raises(ValueError, match="ORBSYM"):
@@ -76,6 +84,7 @@ def test_get_int_list_missing_key_raises() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.output
 def test_get_int_list_negative_value_raises() -> None:
     """`_get_int_list` only accepts non-negative integers, so a negative entry raises a ValueError."""
     with pytest.raises(ValueError, match="ORBSYM"):
@@ -83,6 +92,7 @@ def test_get_int_list_negative_value_raises() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.output
 def test_hcore_matrix_shape_and_symmetry() -> None:
     dump = Fcidump(
         norb=2,
@@ -103,6 +113,17 @@ def test_hcore_matrix_shape_and_symmetry() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.output
+def test_eri_tensor_empty_two_electron() -> None:
+    """Without two-electron integrals, eri_tensor must be all-zero instead of raising."""
+    dump = Fcidump(norb=2, nelec=2, ms2=0, orbsym=[1, 1], isym=0)
+
+    assert dump.eri_tensor.shape == (2, 2, 2, 2)
+    assert not dump.eri_tensor.any()
+
+
+@pytest.mark.unit
+@pytest.mark.output
 def test_eri_tensor_shape_and_symmetry() -> None:
     dump = Fcidump(
         norb=2,

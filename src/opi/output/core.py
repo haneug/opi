@@ -2763,10 +2763,13 @@ class Output:
         """
 
         # > Get path to the FCIDUMP file
-        fci_path = self.get_outfile().with_suffix(".fcidump")
+        fci_path = self.get_file(".fcidump")
 
         # > If there is no file we return None
         if not fci_path.is_file():
             return None
 
-        return Fcidump.from_file(fci_path)
+        try:
+            return Fcidump.from_file(fci_path)
+        except ValueError:
+            return None
