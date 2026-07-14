@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
+from typing import Self
 
 import numpy as np
 
@@ -50,7 +51,7 @@ class Fcidump:
     path: Path = field(default_factory=Path)
 
     @cached_property
-    def hcore_matrix(self) -> np.ndarray:
+    def hcore_matrix(self) -> np.ndarray[tuple[int, int], np.dtype[np.float64]]:
         """Return the one-electron integrals as a symmetric (norb, norb) numpy array."""
         mat = np.zeros((self.norb, self.norb))
         for (i, j), val in self.one_electron.items():
@@ -59,7 +60,7 @@ class Fcidump:
         return mat
 
     @cached_property
-    def eri_tensor(self) -> np.ndarray:
+    def eri_tensor(self) -> np.ndarray[tuple[int, int, int, int], np.dtype[np.float64]]:
         """Return the two-electron integrals as a (norb, norb, norb, norb) numpy array.
 
         Uses chemist's notation (ij|kl) with 8-fold permutation symmetry applied.
@@ -88,7 +89,7 @@ class Fcidump:
         return tensor
 
     @classmethod
-    def from_file(cls, path: Path | str) -> "Fcidump":
+    def from_file(cls, path: Path | str) -> Self:
         """
         Parse a FCIDUMP file and return the populated `Fcidump` object.
         The FCIDUMP file is documented in the paper:
