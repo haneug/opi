@@ -306,25 +306,16 @@ class Settings(BaseModel):
         metadata = cls._get_field_metadata(hint)
         return cls._resolve_field_value(value, metadata)
 
-    @model_validator(mode="before")
-    @classmethod
-    def cross_validate(cls, data: dict[str, Any]) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def cross_validate(self) -> "Settings":
         """
         Function to process and validate user input, this validator handles validation upon model initialization. Since
-        `self.validate_field()` already exists, this function will be reserved only for cross validation.
-
-        Parameters
-        ----------
-        data: dict
-            User input data.
+        `self.validate_field()` already exists, this function will be reserved only for cross validation between fields.
 
         Returns
         -------
-        dict
-            Cross-validated user input data
+        Settings
+            Cross-validated instance of `Settings` class
 
         """
-        if not isinstance(data, dict):
-            return data
-
-        return data
+        return self
