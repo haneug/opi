@@ -21,7 +21,7 @@ class OptThreshold(SimpleKeywordBox):
     """SimpleKeyword: Geometry optimization with thresholds."""
 
 
-class Opt(SimpleKeywordBox):
+class Opt(OptThreshold):
     """Enum to store all simple keywords of type Opt."""
 
     OPT = SimpleKeyword("opt")

@@ -349,93 +349,32 @@ class SimpleTask(ABC, typing.Generic[_RT]):
     def from_string(
         cls,
         string: str,
-        basename: str,
-        structure: Structure | None = None,
-        working_dir: Path = Path("RUN"),
-        ncores: int | None = None,
-        memory: int | None = None,
-        moinp: Path | None = None,
-        strict: bool = False,
-    ) -> _RT:
+    ) -> typing.Self:
         """
-        Run a calculation from a raw ORCA keyword string.
+        Build a task from a raw ORCA keyword string.
 
         Bypasses the typed ``TaskSettings``/``MethodSettings`` API and feeds
-        keywords directly into the input file.
+        keywords directly into the input file. Equivalent to constructing the
+        task with ``input=string``.
 
         Parameters
         ----------
         string : str
             Space-separated ORCA simple keywords (leading ``!`` characters are
-            stripped automatically).  Example: ``"! B3LYP def2-SVP FREQ"``.
-        basename : str
-            Base name for the output files.
-        structure : Structure, optional
-            Input structure.  May be ``None`` if the structure is embedded in
-            the keyword string or an external file block.
-        working_dir : Path, optional
-            Directory in which to run the calculation.  Created (or recreated)
-            unless ``strict=True``.  Defaults to ``Path("RUN")``.
-        ncores : int, optional
-            Number of CPU cores to use.
-        memory : int, optional
-            Memory in MB.
-        moinp : Path, optional
-            Path to an MO input file for seeding the SCF guess.
-        strict : bool, optional
-            If ``True``, ``working_dir`` must already exist and be empty;
-            raises ``ValueError`` otherwise.  Defaults to ``False``.
+            stripped automatically).  Example: ``"B3LYP def2-SVP FREQ"``.
 
         Returns
         -------
-        TaskResults
-            Results object of the concrete type bound to this task class.
-
-        Raises
-        ------
-        ValueError
-            If ``strict=True`` and the working directory does not exist or is
-            not empty.
+        Self
+            A task instance of the concrete subclass, ready for ``run()``.
         """
-        if strict:
-            # Must already exist
-            if not working_dir.exists():
-                raise ValueError(
-                    f"Working directory {working_dir.resolve()} does not exist (strict mode)"
-                )
-
-            # Must be empty
-            if any(working_dir.iterdir()):
-                raise ValueError(
-                    f"Working directory {working_dir.resolve()} is not empty (strict mode)"
-                )
-
-        else:
-            # Non-strict: recreate directory
-            if working_dir.exists():
-                shutil.rmtree(working_dir)
-            working_dir.mkdir()
-
-        calc = Calculator(basename, working_dir=working_dir)
-        calc.structure = structure
-        inp = calc.input
-        keywords = string.split(" ")
+        inp = Input()
+        keywords = string.split()
         for keyword in keywords:
             keyword = keyword.strip("!")
             inp.add_simple_keywords(SimpleKeyword(keyword))
 
-        if ncores is not None:
-            inp.ncores = ncores
-
-        if memory is not None:
-            inp.memory = memory
-
-        if moinp is not None:
-            inp.moinp = moinp
-
-        calc.write_and_run()
-
-        return cls._results_type(calculator=calc)
+        return cls(input=inp)
 
     def run(
         self,
