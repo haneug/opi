@@ -2,8 +2,7 @@ import typing
 import warnings
 from typing import Any
 
-from pydantic import ConfigDict, field_validator, model_validator
-from pydantic_core.core_schema import ValidationInfo
+from pydantic import ConfigDict, model_validator
 
 from opi.input import Input
 from opi.input.simple_keywords import (
@@ -117,7 +116,8 @@ class MethodSettings(Settings):
                 if enum_class.find_keyword(method):
                     return typing.cast(typing.Type[MethodSettings], settings_type)
             except ValueError:
-                pass
+                if enum_class is Dft and DftSettings._split_dft_disp_keyword(method) is not None:
+                    return typing.cast(typing.Type[MethodSettings], settings_type)
 
         raise ValueError(f"Keyword {method} not found in any of the valid groupings")
 
@@ -127,7 +127,8 @@ class DftSettings(MethodSettings):
     Method settings for DFT calculations.
 
     Accepts DFT functionals with an optional ``-`` separated dispersion
-    correction (e.g. ``"PBE-D3BJ"``).  Composite "3c" methods silently drop
+    correction (e.g. ``"PBE-D3BJ"``), which is split into ``method`` and
+    ``disp_correction`` on construction.  Composite "3c" methods silently drop
     ``basis_set`` because they carry their own basis internally.
     """
 
@@ -142,26 +143,53 @@ class DftSettings(MethodSettings):
     scf_solver: typing.Annotated[SimpleKeyword, ScfSolver] | None = None
     scf_stab: bool = False
     scf_conv: typing.Annotated[SimpleKeyword, ScfConvergence] | None = None
+    disp_correction: typing.Annotated[SimpleKeyword, DispersionCorrection] | None = None
 
-    @field_validator("*", mode="before")
+    @model_validator(mode="before")
     @classmethod
-    def validate_fields(cls, value: Any, info: ValidationInfo) -> Any:
+    def _split_compound_method(cls, data: Any) -> Any:
         """
-        Pre-validate all fields, with special handling for ``method``.
+        Split a compound ``"Functional-Dispersion"`` ``method`` string into
+        separate ``method`` and ``disp_correction`` fields.
 
-        For the ``method`` field, tries a plain ``Dft`` lookup first; if that
-        fails, falls back to ``_find_dft_disp_keyword`` to support
-        ``"Functional-Dispersion"`` compound strings.  All other fields
-        delegate to the base ``Settings`` validator.
+        Runs before validation, so by the time ``method`` and
+        ``disp_correction`` are validated individually they are already
+        single-purpose values. Left untouched if ``method`` is already a valid
+        standalone ``Dft`` keyword, since several functionals carry their own
+        dispersion correction (or a dash) in their registered name, e.g.
+        ``"wb97x-d3bj"`` or ``"r2scan-3c"``.
         """
-        if info.field_name == "method":
-            try:
-                new_keyword = Dft.find_keyword(value)
-            except ValueError:
-                new_keyword = cls._find_dft_disp_keyword(value)
-            return new_keyword
-        else:
-            return super().validate_fields(value, info)
+        if not isinstance(data, dict):
+            return data
+        method = data.get("method")
+        if method is None:
+            return data
+
+        method_str = method.keyword if isinstance(method, SimpleKeyword) else method
+        if not isinstance(method_str, str):
+            return data
+
+        try:
+            Dft.find_keyword(method_str)
+            return data
+        except ValueError:
+            pass
+
+        split = cls._split_dft_disp_keyword(method_str)
+        if split is None:
+            return data
+
+        functional, dispersion = split
+        if data.get("disp_correction") is not None:
+            raise ValueError(
+                f"Conflicting dispersion correction: method {method_str!r} already specifies "
+                f"{dispersion!r}, but disp_correction={data['disp_correction']!r} was also given."
+            )
+
+        data = dict(data)
+        data["method"] = functional
+        data["disp_correction"] = dispersion
+        return data
 
     @model_validator(mode="after")
     def cross_validate(self) -> "DftSettings":
@@ -212,13 +240,13 @@ class DftSettings(MethodSettings):
         return input_object
 
     @classmethod
-    def _find_dft_disp_keyword(cls, value: str | SimpleKeyword) -> SimpleKeyword:
+    def _split_dft_disp_keyword(cls, value: str | SimpleKeyword) -> tuple[str, str] | None:
         """
-        Function to search for a `Dft` keyword along with `DispersionCorrection`.
-        In the case that an - is present in keyword, the keyword is split along the - and it is verified whether the
-        given keyword is a valid combination of `Dft` and `DispersionCorrection` keyword.
+        Split a compound ``"Functional-Dispersion"`` string into its parts.
 
-        If it is , a `SimpleKeyword` object is created and returned. If not , a `ValueError` is raised.
+        Splits on the last ``-`` so functional names that themselves contain a
+        dash (e.g. ``"cam-b3lyp"``) are handled correctly.
+
         Parameters
         ----------
         value: str | SimpleKeyword
@@ -226,29 +254,25 @@ class DftSettings(MethodSettings):
 
         Returns
         -------
-        SimpleKeyword
-            The created `SimpleKeyword` object.
-
-        Raises
-        ------
-        ValueError
-            If given value is invalid
-
+        tuple[str, str] | None
+            ``(functional, dispersion)`` if ``value`` is a valid compound of a
+            ``Dft`` keyword and a ``DispersionCorrection`` keyword, ``None``
+            otherwise.
         """
         if isinstance(value, SimpleKeyword):
             value = value.keyword
 
-        if "-" in value:
-            try:
-                keywords = value.split("-")
-                Dft.find_keyword(keywords[0])
-                DispersionCorrection.find_keyword(keywords[1])
+        if "-" not in value:
+            return None
 
-                return SimpleKeyword(value)
-            except ValueError:
-                raise ValueError(f"Invalid Dft keyword or dispersion correction given: {value}")
-        else:
-            raise ValueError(f"Invalid Dft keyword '{value}'")
+        functional, _, dispersion = value.rpartition("-")
+        try:
+            Dft.find_keyword(functional)
+            DispersionCorrection.find_keyword(dispersion)
+        except ValueError:
+            return None
+
+        return functional, dispersion
 
 
 class SqmSettings(MethodSettings):

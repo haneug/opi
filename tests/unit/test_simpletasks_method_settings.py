@@ -62,10 +62,54 @@ def test_resolve_method_settings_type(method: str, expected_cls: type) -> None:
 @pytest.mark.unit
 @pytest.mark.simpletasks
 def test_dft_compound_keyword_parsed() -> None:
-    """DftSettings accepts 'Functional-Dispersion' compound strings like 'PBE-D3BJ'."""
+    """DftSettings splits 'Functional-Dispersion' compound strings like 'PBE-D3BJ'
+    into separate `method` and `disp_correction` fields."""
     s = DftSettings(method="PBE-D3BJ")
     assert s.method is not None
-    assert s.method.keyword.lower() == "pbe-d3bj"
+    assert s.method.keyword.lower() == "pbe"
+    assert s.disp_correction is not None
+    assert s.disp_correction.keyword.lower() == "d3bj"
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_dft_compound_keyword_multi_dash_functional() -> None:
+    """Splitting only on the last '-' handles functionals that themselves contain a dash."""
+    s = DftSettings(method="CAM-B3LYP-D3BJ")
+    assert s.method is not None
+    assert s.method.keyword.lower() == "cam-b3lyp"
+    assert s.disp_correction is not None
+    assert s.disp_correction.keyword.lower() == "d3bj"
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_dft_functional_with_builtin_dispersion_not_split() -> None:
+    """Functionals whose registered keyword already contains a dash (and dispersion
+    baked into the name) are left untouched rather than being split apart."""
+    s = DftSettings(method="wb97x-d3bj")
+    assert s.method is not None
+    assert s.method.keyword.lower() == "wb97x-d3bj"
+    assert s.disp_correction is None
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_dft_explicit_disp_correction() -> None:
+    """disp_correction can be set directly alongside a plain method."""
+    s = DftSettings(method="PBE", disp_correction="D4")
+    assert s.method is not None
+    assert s.method.keyword.lower() == "pbe"
+    assert s.disp_correction is not None
+    assert s.disp_correction.keyword.lower() == "d4"
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_dft_conflicting_disp_correction_raises() -> None:
+    """A compound method string that disagrees with an explicit disp_correction raises."""
+    with pytest.raises(ValidationError):
+        DftSettings(method="PBE-D3BJ", disp_correction="D4")
 
 
 @pytest.mark.unit
@@ -73,7 +117,7 @@ def test_dft_compound_keyword_parsed() -> None:
 def test_dft_invalid_compound_keyword_raises() -> None:
     """DftSettings raises ValidationError for unrecognised compound method strings."""
     with pytest.raises(ValidationError):
-        DftSettings(method="INVALID-NOTADISP")
+        DftSettings(method="INVALID-NOTALLOWED")
 
 
 @pytest.mark.unit

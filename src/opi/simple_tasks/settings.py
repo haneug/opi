@@ -262,8 +262,13 @@ class Settings(BaseModel):
 
             # value is a SolvationModelAndSolvent callable; calling it with solvent produces the keyword
             new_keyword = value(solvent)
+        elif isinstance(value, SimpleKeyword):
+            # Field validation already resolved this to a SimpleKeyword; avoid re-deriving it,
+            # since re-running find_keyword() bypasses subclass fallbacks (e.g. DftSettings'
+            # dispersion-correction handling) and can reject an already-valid value.
+            new_keyword = value
         else:
-            # All other validators: look up the string value directly in the enum
+            # Fallback for values that were never resolved to a SimpleKeyword
             new_keyword = validator.find_keyword(value)
 
         return new_keyword
