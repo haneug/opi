@@ -312,9 +312,7 @@ def test_user_set_memory_persists() -> None:
 def test_user_added_arbitrary_string_persists() -> None:
     """An arbitrary string added to input is preserved across accesses."""
     task = SinglePointTask(method="pbe")
-    task.input.add_arbitrary_string(
-        "% some custom block\nend", pos=ArbitraryStringPos.BOTTOM
-    )
+    task.input.add_arbitrary_string("% some custom block\nend", pos=ArbitraryStringPos.BOTTOM)
     assert len(task.input.arbitrary_strings) == 1
     assert len(task.input.arbitrary_strings) == 1
 
