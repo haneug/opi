@@ -22,6 +22,7 @@ from opi.input.simple_keywords import (
 from opi.input.simple_keywords.dlpno import Dlpno, PNOThresh
 from opi.input.simple_keywords.scf import Scf, ScfConvergence, ScfSolver, ScfThreshold
 from opi.input.simple_keywords.wft import DLPNOcc
+from opi.output.core import Output
 from opi.simple_tasks.settings import Settings
 
 
@@ -120,6 +121,27 @@ class MethodSettings(Settings):
                     return typing.cast(typing.Type[MethodSettings], settings_type)
 
         raise ValueError(f"Keyword {method} not found in any of the valid groupings")
+
+    @classmethod
+    def check_convergence(cls, output: Output) -> bool:
+        """
+        Method-family-specific convergence check on top of ``Output.terminated_normally()``.
+
+        Base implementation performs no additional check; subclasses override
+        this for methods that need one (e.g. SCF-based methods check
+        ``Output.scf_converged()``).
+
+        Parameters
+        ----------
+        output : Output
+            Parsed ORCA output of the completed calculation.
+
+        Returns
+        -------
+        bool
+            ``True`` if this method family's convergence criteria are met.
+        """
+        return True
 
 
 class DftSettings(MethodSettings):
@@ -240,6 +262,11 @@ class DftSettings(MethodSettings):
         return input_object
 
     @classmethod
+    def check_convergence(cls, output: Output) -> bool:
+        """``True`` if the SCF converged."""
+        return output.scf_converged()
+
+    @classmethod
     def _split_dft_disp_keyword(cls, value: str | SimpleKeyword) -> tuple[str, str] | None:
         """
         Split a compound ``"Functional-Dispersion"`` string into its parts.
@@ -316,6 +343,11 @@ class SqmSettings(MethodSettings):
 
         return input_object
 
+    @classmethod
+    def check_convergence(cls, output: Output) -> bool:
+        """``True`` if the SCF converged."""
+        return output.scf_converged()
+
 
 class WftSettings(MethodSettings):
     """
@@ -331,6 +363,11 @@ class WftSettings(MethodSettings):
     _name: str = "wft"
     method: typing.Annotated[SimpleKeyword, Wft]
 
+    @classmethod
+    def check_convergence(cls, output: Output) -> bool:
+        """``True`` if the SCF converged."""
+        return output.scf_converged()
+
 
 class HFSettings(MethodSettings):
     """
@@ -344,6 +381,11 @@ class HFSettings(MethodSettings):
     )
     _name: str = "hf"
     method: typing.Annotated[SimpleKeyword, Method]
+
+    @classmethod
+    def check_convergence(cls, output: Output) -> bool:
+        """``True`` if the SCF converged."""
+        return output.scf_converged()
 
 
 class ForceFieldSettings(MethodSettings):
@@ -423,3 +465,8 @@ class DlpnoCcSettings(MethodSettings):
             input_object.add_simple_keywords(Dlpno.LED)
 
         return input_object
+
+    @classmethod
+    def check_convergence(cls, output: Output) -> bool:
+        """``True`` if the SCF converged."""
+        return output.scf_converged()

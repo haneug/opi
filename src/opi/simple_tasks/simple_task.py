@@ -457,7 +457,8 @@ class SimpleTask(ABC, typing.Generic[_RT]):
 
         calc.write_and_run()
 
-        return self._results_type(calculator=calc)
+        method_family = type(self.method_settings) if self.method_settings else MethodSettings
+        return self._results_type(calculator=calc, _method_family=method_family)
 
     def restart(
         self,
@@ -555,7 +556,7 @@ class TaskResults(ABC):
     ``primary_property``.
     """
 
-    def __init__(self, calculator: Calculator):
+    def __init__(self, calculator: Calculator, _method_family: type[MethodSettings]):
         """
         Parameters
         ----------
@@ -563,6 +564,7 @@ class TaskResults(ABC):
             The calculator that ran the calculation.
         """
         self.calculator = calculator
+        self._method_family = _method_family
 
     @property
     def output(self) -> Output:
@@ -582,8 +584,10 @@ class TaskResults(ABC):
 
     @property
     def status(self) -> bool:
-        """``True`` if the job terminated normally and SCF converged."""
-        return self.output.terminated_normally()
+        """``True`` if the job terminated normally and passes method-specific convergence checks."""
+        return self.output.terminated_normally() and self._method_family.check_convergence(
+            self.output
+        )
 
     @property
     @abstractmethod

@@ -85,6 +85,13 @@ class OptResults(TaskResults):
         """``(final_energy, optimised_structure)`` tuple."""
         return self.final_energy, self.structure
 
+    @property
+    def status(self) -> bool:
+        return (
+            self.output.geometry_optimization_converged()
+            and self._method_family.check_convergence(self.output)
+        )
+
 
 class OptTask(SimpleTask[OptResults]):
     """

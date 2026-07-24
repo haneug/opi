@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -5,9 +7,12 @@ from opi.input import Input
 from opi.input.blocks import BlockScf
 from opi.input.simple_keywords import BasisSet, Dft
 from opi.input.simple_keywords.scf import Scf
+from opi.output.core import Output
 from opi.simple_tasks.method_settings import (
     DftSettings,
+    DlpnoCcSettings,
     ForceFieldSettings,
+    HFSettings,
     MethodSettings,
     SqmSettings,
     WftSettings,
@@ -22,6 +27,8 @@ Unit tests for MethodSettings and its subclasses:
 - scf_stab flag adding SCFSTAB keyword
 - Settings merge operator (|)
 - Invalid field rejection
+- check_convergence: SCF-based method families defer to Output.scf_converged(),
+  ForceFieldSettings (no SCF step) always reports True
 """
 
 
@@ -228,3 +235,46 @@ def test_block_option_stored_and_mapped(
     inp = s.map_to_input(Input())
     assert inp.has_blocks(BlockScf()) == (True,)
     assert getattr(inp.blocks[BlockScf], block_attr) == value
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_base_method_settings_check_convergence_defaults_true(tmp_path: Path) -> None:
+    """MethodSettings.check_convergence() with no override is True regardless of the output."""
+    (tmp_path / "job.out").write_text("nothing SCF related in here")
+    output = Output("job", working_dir=tmp_path)
+    assert MethodSettings.check_convergence(output) is True
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+def test_force_field_check_convergence_ignores_missing_scf(tmp_path: Path) -> None:
+    """ForceFieldSettings has no SCF step, so check_convergence() stays True without a 'SUCCESS' line."""
+    (tmp_path / "job.out").write_text("force field run, no SCF here")
+    output = Output("job", working_dir=tmp_path)
+    assert ForceFieldSettings.check_convergence(output) is True
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+@pytest.mark.parametrize(
+    "settings_cls",
+    [DftSettings, SqmSettings, WftSettings, HFSettings, DlpnoCcSettings],
+)
+@pytest.mark.parametrize(
+    "out_contents,expected",
+    [
+        ("SCF ITERATIONS\n... SUCCESS ...", True),
+        ("SCF ITERATIONS\n... did not converge ...", False),
+    ],
+)
+def test_scf_based_check_convergence_matches_scf_converged(
+    tmp_path: Path,
+    settings_cls: type[MethodSettings],
+    out_contents: str,
+    expected: bool,
+) -> None:
+    """SCF-based method families report check_convergence() based on Output.scf_converged()."""
+    (tmp_path / "job.out").write_text(out_contents)
+    output = Output("job", working_dir=tmp_path)
+    assert settings_cls.check_convergence(output) is expected
