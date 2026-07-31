@@ -1,3 +1,5 @@
+import typing
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -35,11 +37,34 @@ a hand-written ``.out`` file, since the health-check methods it relies on
 only need the raw output file, never `Output.parse()`.
 """
 
+# > The health checks are unscoped, case-sensitive, per-line substring searches over
+# > the whole ".out" file, so each fixture below is exactly the sentinel its check
+# > greps for -- ORCA's surrounding banner text plays no part. Note the asterisks in
+# > `TERMINATED_NORMALLY` are part of the searched string, unlike the other two.
+# > `SCF_NOT_CONVERGED` is what ORCA prints when the SCF fails; that check keys off
+# > the *absence* of "SUCCESS", so its content only has to not contain it.
+
+SCF_CONVERGED = "SUCCESS\n"
+SCF_NOT_CONVERGED = "SCF NOT CONVERGED AFTER 1 CYCLES\n"
+OPT_CONVERGED = "HURRAY\n"
+TERMINATED_NORMALLY = "****ORCA TERMINATED NORMALLY****\n"
+
+_RT = typing.TypeVar("_RT", bound=TaskResults)
+
 
 def _patch_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, contents: str) -> None:
     (tmp_path / "job.out").write_text(contents)
     output = Output("job", working_dir=tmp_path)
     monkeypatch.setattr(TaskResults, "output", property(lambda self: output))
+
+
+def _make_results(results_type: type[_RT], method_family: type[MethodSettings]) -> _RT:
+    """Build a results object for a status check.
+
+    `calculator` is left unset because `_patch_output` replaces
+    `TaskResults.output`, the only member that reads it.
+    """
+    return results_type(calculator=None, _method_family=method_family)  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
@@ -53,10 +78,8 @@ def test_status_true_when_terminated_normally_and_scf_converged(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """SCF-based method family: status is True when both checks pass."""
-    _patch_output(
-        monkeypatch, tmp_path, "SCF ITERATIONS\n... SUCCESS ...\n****ORCA TERMINATED NORMALLY****"
-    )
-    results = SinglePointResults(calculator=None, _method_family=DftSettings)  # type: ignore[arg-type]
+    _patch_output(monkeypatch, tmp_path, SCF_CONVERGED + TERMINATED_NORMALLY)
+    results = _make_results(SinglePointResults, DftSettings)
     assert results.status is True
 
 
@@ -66,8 +89,8 @@ def test_status_false_when_not_terminated_normally(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Missing 'ORCA TERMINATED NORMALLY' fails status even if the SCF converged."""
-    _patch_output(monkeypatch, tmp_path, "SCF ITERATIONS\n... SUCCESS ...")
-    results = SinglePointResults(calculator=None, _method_family=DftSettings)  # type: ignore[arg-type]
+    _patch_output(monkeypatch, tmp_path, SCF_CONVERGED)
+    results = _make_results(SinglePointResults, DftSettings)
     assert results.status is False
 
 
@@ -77,12 +100,8 @@ def test_status_false_when_scf_not_converged(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Normal termination with a non-converged SCF fails status for SCF-based methods."""
-    _patch_output(
-        monkeypatch,
-        tmp_path,
-        "SCF ITERATIONS\n... did not converge ...\n****ORCA TERMINATED NORMALLY****",
-    )
-    results = SinglePointResults(calculator=None, _method_family=DftSettings)  # type: ignore[arg-type]
+    _patch_output(monkeypatch, tmp_path, SCF_NOT_CONVERGED + TERMINATED_NORMALLY)
+    results = _make_results(SinglePointResults, DftSettings)
     assert results.status is False
 
 
@@ -92,8 +111,8 @@ def test_status_true_for_forcefield_without_scf(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """ForceFieldSettings has no SCF step, so status only requires normal termination."""
-    _patch_output(monkeypatch, tmp_path, "****ORCA TERMINATED NORMALLY****")
-    results = SinglePointResults(calculator=None, _method_family=ForceFieldSettings)  # type: ignore[arg-type]
+    _patch_output(monkeypatch, tmp_path, TERMINATED_NORMALLY)
+    results = _make_results(SinglePointResults, ForceFieldSettings)
     assert results.status is True
 
 
@@ -108,8 +127,8 @@ def test_opt_status_true_when_optimization_and_method_converged(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """OptResults.status is True when geometry optimization and SCF both converged."""
-    _patch_output(monkeypatch, tmp_path, "SCF ITERATIONS\n... SUCCESS ...\nHURRAY")
-    results = OptResults(calculator=None, _method_family=DftSettings)  # type: ignore[arg-type]
+    _patch_output(monkeypatch, tmp_path, SCF_CONVERGED + OPT_CONVERGED + TERMINATED_NORMALLY)
+    results = _make_results(OptResults, DftSettings)
     assert results.status is True
 
 
@@ -119,8 +138,8 @@ def test_opt_status_false_when_optimization_not_converged(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """OptResults.status is False without 'HURRAY', even if the SCF converged."""
-    _patch_output(monkeypatch, tmp_path, "SCF ITERATIONS\n... SUCCESS ...")
-    results = OptResults(calculator=None, _method_family=DftSettings)  # type: ignore[arg-type]
+    _patch_output(monkeypatch, tmp_path, SCF_CONVERGED + TERMINATED_NORMALLY)
+    results = _make_results(OptResults, DftSettings)
     assert results.status is False
 
 
@@ -130,8 +149,8 @@ def test_opt_status_false_when_method_check_fails(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """OptResults.status is False when the geometry converged but the SCF did not."""
-    _patch_output(monkeypatch, tmp_path, "SCF ITERATIONS\n... did not converge ...\nHURRAY")
-    results = OptResults(calculator=None, _method_family=DftSettings)  # type: ignore[arg-type]
+    _patch_output(monkeypatch, tmp_path, SCF_NOT_CONVERGED + OPT_CONVERGED + TERMINATED_NORMALLY)
+    results = _make_results(OptResults, DftSettings)
     assert results.status is False
 
 
@@ -141,8 +160,8 @@ def test_opt_status_true_for_forcefield_without_scf(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """ForceFieldSettings has no SCF step, so OptResults.status only needs 'HURRAY'."""
-    _patch_output(monkeypatch, tmp_path, "HURRAY")
-    results = OptResults(calculator=None, _method_family=ForceFieldSettings)  # type: ignore[arg-type]
+    _patch_output(monkeypatch, tmp_path, OPT_CONVERGED + TERMINATED_NORMALLY)
+    results = _make_results(OptResults, ForceFieldSettings)
     assert results.status is True
 
 
@@ -152,8 +171,8 @@ def test_opt_status_does_not_use_terminated_normally(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """OptResults.status ignores terminated_normally(): 'HURRAY' alone is enough."""
-    _patch_output(monkeypatch, tmp_path, "HURRAY")
-    results = OptResults(calculator=None, _method_family=MethodSettings)  # type: ignore[arg-type]
+    _patch_output(monkeypatch, tmp_path, OPT_CONVERGED)
+    results = _make_results(OptResults, MethodSettings)
     assert results.output.terminated_normally() is False
     assert results.status is True
 
@@ -178,13 +197,7 @@ def no_orca(monkeypatch: pytest.MonkeyPatch) -> None:
     `simple_task` resolves at call time; `write_and_run` is stubbed separately
     since it always executes ORCA regardless of `version_check`.
     """
-    monkeypatch.setattr(
-        simple_task,
-        "Calculator",
-        lambda basename, working_dir=None: Calculator(
-            basename, working_dir=working_dir, version_check=False
-        ),
-    )
+    monkeypatch.setattr(simple_task, "Calculator", partial(Calculator, version_check=False))
     monkeypatch.setattr(Calculator, "write_and_run", lambda self: True)
 
 
