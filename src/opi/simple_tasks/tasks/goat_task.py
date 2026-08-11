@@ -54,27 +54,42 @@ class GoatSettings(TaskSettings):
 
 
 class GoatResults(TaskResults):
-    """Results from a GOAT conformer-ensemble exploration."""
-
-    @property
-    def status(self) -> bool:
-        """``True`` if the job terminated normally."""
-        return self.output.terminated_normally()
+    """Results from a GOAT conformer-ensemble generation."""
 
     @property
     def structures(self) -> list[Structure]:
-        """All structures in the final conformer ensemble."""
-        structures = Structure.from_trj_xyz(
-            self.output.working_dir / f"{self.output.basename}.finalensemble.xyz"
-        )
+        """
+        All structures in the final conformer ensemble.
+
+        Raises
+        ------
+        ValueError
+            If the structures could not be obtained from the ORCA Output.
+        """
+        try:
+            structures = Structure.from_trj_xyz(
+                self.output.working_dir / f"{self.output.basename}.finalensemble.xyz"
+            )
+        except (FileNotFoundError, ValueError, EOFError):
+            raise ValueError("Could not obtain conformer structures from the ORCA Output")
         return structures
 
     @property
     def properties(self) -> list[Properties]:
-        """Per-conformer properties (energies, …) from the final ensemble file."""
-        properties = Properties.from_trj_xyz(
-            self.output.working_dir / f"{self.output.basename}.finalensemble.xyz", mode="goat"
-        )
+        """
+        Per-conformer properties (energies, …) from the final ensemble file.
+
+        Raises
+        ------
+        ValueError
+            If the properties could not be obtained from the ORCA Output.
+        """
+        try:
+            properties = Properties.from_trj_xyz(
+                self.output.working_dir / f"{self.output.basename}.finalensemble.xyz", mode="goat"
+            )
+        except (FileNotFoundError, ValueError, EOFError):
+            raise ValueError("Could not obtain conformer energies from the ORCA Output")
         return properties
 
     @property
@@ -85,7 +100,7 @@ class GoatResults(TaskResults):
 
 class GoatTask(SimpleTask[GoatResults]):
     """
-    High-level task for GOAT conformer-ensemble explorations.
+    Simple task for GOAT conformer-ensemble generation.
 
     Returns a ``GoatResults`` object containing the ensemble structures and
     their associated properties read from the ``.finalensemble.xyz`` file.

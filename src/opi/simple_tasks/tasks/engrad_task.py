@@ -39,7 +39,7 @@ class EngradResults(TaskResults):
 
 class EngradTask(SimpleTask[EngradResults]):
     """
-    Task for single-point energy and gradient calculations.
+    Simple task for single-point energy and gradient calculations.
 
     Returns an ``EngradResults`` object containing the total energy and
     the Cartesian gradient vector.

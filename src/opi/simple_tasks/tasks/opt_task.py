@@ -88,14 +88,15 @@ class OptResults(TaskResults):
     @property
     def status(self) -> bool:
         return (
-            self.output.geometry_optimization_converged()
+            super().status
+            and self.output.geometry_optimization_converged()
             and self._method_family.check_convergence(self.output)
         )
 
 
 class OptTask(SimpleTask[OptResults]):
     """
-    High-level task for geometry optimisations.
+    Simple task for geometry optimisations.
 
     Exposes convenience properties (``opt_threshold``, ``optrigid``,
     ``opt_h``, ``lopt``, ``opt_maxiter``) that forward to the underlying

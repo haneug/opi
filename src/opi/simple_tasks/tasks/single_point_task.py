@@ -22,7 +22,7 @@ class SinglePointResults(TaskResults):
 
 class SinglePointTask(SimpleTask[SinglePointResults]):
     """
-    High-level task for single-point energy calculations.
+    Simple task for single-point energy calculations.
 
     Configures ORCA with the ``SP`` keyword and returns a
     ``SinglePointResults`` object whose ``final_energy`` attribute holds the
