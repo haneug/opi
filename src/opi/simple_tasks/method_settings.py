@@ -150,6 +150,25 @@ class DftSettings(MethodSettings):
     correction (e.g. ``"PBE-D3BJ"``), which is split into ``method`` and
     ``disp_correction`` on construction.  Composite "3c" methods silently drop
     ``basis_set`` because they carry their own basis internally.
+
+    Attributes
+    -----------
+    method: Dft | None, default: None
+        Dft method to use. E.g., wb97m-v or r2SCAN-3c.
+    grid: Grid | None, default: None
+        Grid for numerical integration to use (XC and COSX),e.g., "1", "2", "3" for the respective defgrids.
+    scf_maxiter: int | None, default: None
+        Maximum number of SCF iterations. a simple integer
+    scf_threshold: ScfThreshold | None, default: None
+        SCF convergence settings: "sloppy", "loose", "normal", "tight", "verytight", extreme
+    scf_solver: ScfSolver | None, default: None
+        Which solver to use for the SCF: "diis", "kdiis", "soscf", "trah".
+    scf_stab: bool, default: False
+        Whether to perform an SCF stability analysis to check for saddle points in the SCF solution.
+    scf_conv: ScfConvergence | None, default: None
+        SCF convergence difficulty/strategy: "easy", "normal", "slow", "veryslow".
+    disp_correction: DispersionCorrection] | None, default: None
+        Dispersion correction to use: e.g. D3BJ, D4, NL, SCNL
     """
 
     model_config = ConfigDict(
@@ -307,6 +326,21 @@ class SqmSettings(MethodSettings):
     Supports the same SCF control knobs as ``DFTSettings`` (``scf_maxiter``,
     ``scf_threshold``, ``scf_solver``, ``scf_stab``, ``scf_conv``).
     No basis set field — SQM methods carry their own parametrisation.
+
+    Attributes
+    -----------
+    method: Sqm
+        Sqm method to use. E.g., "native-gfn2-xtb"
+    scf_maxiter: int | None, default: None
+        Maximum number of SCF iterations. a simple integer
+    scf_threshold: ScfThreshold | None, default: None
+        SCF convergence settings: "sloppy", "loose", "normal", "tight", "verytight", extreme
+    scf_solver: ScfSolver | None, default: None
+        Which solver to use for the SCF: "diis", "kdiis", "soscf", "trah".
+    scf_stab: bool, default: False
+        Whether to perform an SCF stability analysis to check for saddle points in the SCF solution.
+    scf_conv: ScfConvergence | None, default: None
+        SCF convergence difficulty/strategy: "easy", "normal", "slow", "veryslow".
     """
 
     model_config = ConfigDict(
@@ -379,6 +413,31 @@ class DlpnoCcSettings(MethodSettings):
     Exposes DLPNO-specific thresholds (``pno_thresh``, ``dlpno_t_cut_do``,
     ``dlono_t_cut_pno``) and enables LED analysis via ``dlpno_led=True``.
     SCF control knobs are also available.
+
+    Attributes
+    -----------
+    method: DLPNOcc
+        DLPNO-CC method to use.
+    aux_basis:  AuxBasisSet
+        Auxiliary basis set used for DLPNO.
+    pno_thresh: PNOThresh
+        Threshold for PNO settings: "loosepno", "normalpno", "tightpno"
+    dlpno_led: bool
+        Whether to perform a local energy decomposition.
+    dlpno_t_cut_do: float
+        Advanced DLPNO settings.
+    dlono_t_cut_pno: float
+        Advanced DLPNO settings.
+    scf_maxiter: int | None, default: None
+        Maximum number of SCF iterations. a simple integer
+    scf_threshold: ScfThreshold | None, default: None
+        SCF convergence settings: "sloppy", "loose", "normal", "tight", "verytight", extreme
+    scf_solver: ScfSolver | None, default: None
+        Which solver to use for the SCF: "diis", "kdiis", "soscf", "trah".
+    scf_stab: bool, default: False
+        Whether to perform an SCF stability analysis to check for saddle points in the SCF solution.
+    scf_conv: ScfConvergence | None, default: None
+        SCF convergence difficulty/strategy: "easy", "normal", "slow", "veryslow".
     """
 
     model_config = ConfigDict(
@@ -428,4 +487,4 @@ class DlpnoCcSettings(MethodSettings):
     @classmethod
     def check_convergence(cls, output: Output) -> bool:
         """``True`` if the SCF converged."""
-        return output.scf_converged()
+        return output.scf_converged() and output.cc_converged()
