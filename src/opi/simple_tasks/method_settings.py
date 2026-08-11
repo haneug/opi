@@ -17,7 +17,6 @@ from opi.input.simple_keywords import (
     SolvationModel,
     Solvent,
     Sqm,
-    Wft,
 )
 from opi.input.simple_keywords.dlpno import Dlpno, PNOThresh
 from opi.input.simple_keywords.scf import Scf, ScfConvergence, ScfSolver, ScfThreshold
@@ -106,11 +105,10 @@ class MethodSettings(Settings):
         """
 
         enum_to_settings = {
+            ForceField: ForceFieldSettings,
             Dft: DftSettings,
             Sqm: SqmSettings,
-            Wft: WftSettings,
-            Method: HFSettings,
-            ForceField: ForceFieldSettings,
+            DLPNOcc: DlpnoCcSettings,
         }
         for enum_class, settings_type in enum_to_settings.items():
             try:
@@ -342,45 +340,6 @@ class SqmSettings(MethodSettings):
             input_object.add_simple_keywords(Scf.SCFSTAB)
 
         return input_object
-
-    @classmethod
-    def check_convergence(cls, output: Output) -> bool:
-        """``True`` if the SCF converged."""
-        return output.scf_converged()
-
-
-class WftSettings(MethodSettings):
-    """
-    Method settings for wave-function theory (WFT) calculations.
-
-    Covers correlated methods such as MP2, CCSD, CCSD(T), etc.  Basis set
-    and solvation are inherited from ``MethodSettings``.
-    """
-
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True, validate_assignment=True, extra="forbid"
-    )
-    _name: str = "wft"
-    method: typing.Annotated[SimpleKeyword, Wft]
-
-    @classmethod
-    def check_convergence(cls, output: Output) -> bool:
-        """``True`` if the SCF converged."""
-        return output.scf_converged()
-
-
-class HFSettings(MethodSettings):
-    """
-    Method settings for Hartree-Fock calculations.
-
-    Basis set and solvation are inherited from ``MethodSettings``.
-    """
-
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True, validate_assignment=True, extra="forbid"
-    )
-    _name: str = "hf"
-    method: typing.Annotated[SimpleKeyword, Method]
 
     @classmethod
     def check_convergence(cls, output: Output) -> bool:

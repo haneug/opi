@@ -2,10 +2,8 @@ from opi.simple_tasks.method_settings import (
     DftSettings,
     DlpnoCcSettings,
     ForceFieldSettings,
-    HFSettings,
     MethodSettings,
     SqmSettings,
-    WftSettings,
 )
 from opi.simple_tasks.simple_task import SimpleTask, TaskResults, TaskSettings
 from opi.simple_tasks.tasks import (
@@ -39,7 +37,6 @@ __all__ = [
     "GoatResults",
     "GoatSettings",
     "GoatTask",
-    "HFSettings",
     "MethodSettings",
     "OptResults",
     "OptSettings",
@@ -51,5 +48,4 @@ __all__ = [
     "SqmSettings",
     "TaskResults",
     "TaskSettings",
-    "WftSettings",
 ]
