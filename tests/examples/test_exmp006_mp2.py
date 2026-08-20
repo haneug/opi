@@ -2,6 +2,7 @@ import pytest
 
 from examples.exmp006_mp2.job import run_exmp006
 from opi.input.structures import Structure
+from opi.output.energy_type import EnergyType
 
 
 @pytest.mark.examples
@@ -19,7 +20,7 @@ def test_exmp006_mp2(example_input_file, tmp_path, json_files_exporter) -> None:
     # Assert negative final energy
     assert output.get_final_energy() < 0
     # Assert MP2 correlation energy
-    assert output.get_energies()["MP2"].correnergy[0][0] < 0
+    assert output.get_energies()[EnergyType.MP2].correlation_energy < 0
 
     # optional export of json files
     json_files_exporter.export_jsons_from(tmp_path)

@@ -41,10 +41,11 @@ from opi.output.models.base.strict_types import (
 )
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.gbw.properties.mo import MO
-from opi.output.models.json.property.properties.calc_time import CalculationTiming
+from opi.output.models.json.property.properties.ci_psi import CiPsi
 from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
 from opi.output.models.json.property.properties.energy import Energy
 from opi.output.models.json.property.properties.energy_list import EnergyList
+from opi.output.models.json.property.properties.gcp_energy import GcpEnergy
 from opi.output.models.json.property.properties.hirshfeld_population_analysis import (
     HirshfeldPopulationAnalysis,
 )
@@ -61,6 +62,10 @@ from opi.output.models.json.property.properties.population_analysis import (
     MullikenPopulationAnalysis,
 )
 from opi.output.models.json.property.properties.quadrupole_moment import QuadrupoleMoment
+from opi.output.models.json.property.properties.roci_en import RoCisEnergy
+from opi.output.models.json.property.properties.van_der_waals_correction import (
+    VdwCorrection,
+)
 from opi.output.models.json.property.property_results import (
     PropertyResults,
 )
@@ -1378,14 +1383,27 @@ class Output:
 
         Notes
         -----
-        Common keys include:
-            - **Unknown**     : No information about the energy is provided.
-            - **SCF**         : SCF energy from HF, DFT, or SQM methods.
-            - **MDCI(SD)**    : Typically the (DLPNO-)CCSD energy.
-            - **MDCI(SD(T))** : Typically the (DLPNO-)CCSD(T) energy.
-            - **CASSCF**      : CASSCF energy.
-            - **MP2**         : MP2 energy.
-            - **TDA/CIS**     : TDA-TD-DFT or CIS energy.
+        The keys are the names that ORCA gives the energy types. `EnergyType` enumerates the known
+        ones and documents what they mean; since its members are plain strings, they can be used
+        for the lookup directly, e.g. `output.get_energies()[EnergyType.MDCI_SD_T]`.
+
+        ORCA reports the corrections that it adds on top of the total energy of the electronic
+        structure method outside of the energy list of the JSON output. They are included as well:
+            - **VdW** (`EnergyType.VDW`): Dispersion correction (e.g. D3 or D4).
+            - **gCP** (`EnergyType.GCP`): Geometrical counterpoise correction. ORCA reports the
+              plain gCP correction (e.g. r2SCAN-3c), the combined gCP+basis set correction
+              (e.g. HF-3c) and the short-range basis (SRB) correction (e.g. B97-3c) in the same
+              field, so all of them show up under this key.
+
+        The corrections are wrapped into `Energy` objects carrying only the method and the energy
+        itself, so their value is accessed the same way as for the other entries, i.e. via the
+        `Energy.energy` property. Adding them to the total energy of the highest-level method
+        present yields `Output.get_final_energy()`. Everything else that ORCA reports about them is
+        available from `Output.get_vdw_correction()` and `Output.get_gcp_correction()`.
+
+        Not every energy that ORCA can report shows up here: methods whose results are not modelled
+        as an `Energy` have their own getters, namely `Output.get_rocis_energies()` and
+        `Output.get_cipsi_energies()`.
         """
 
         # > Energy dict to populate & return
@@ -1399,19 +1417,133 @@ class Output:
         else:
             return None
 
-        for energy in energy_list:
-            if not energy.method:
-                key = "Unknown"
-            else:
-                key = energy.method
+        # > Pair every energy with the key it is to be stored under
+        keyed_energies: list[tuple[str, Energy]] = [
+            (energy.method if energy.method else "Unknown", energy) for energy in energy_list
+        ]
+
+        # > Add the corrections that ORCA reports outside of the energy list. Only the correction
+        # > itself is carried over, the full models are returned by their own getters.
+        vdw_correction = self.get_vdw_correction(index=index)
+        gcp_correction = self.get_gcp_correction(index=index)
+        corrections: tuple[tuple[str, StrictFiniteFloat | None], ...] = (
+            ("VdW", vdw_correction.vdw if vdw_correction is not None else None),
+            ("gCP", gcp_correction.gcp_energy if gcp_correction is not None else None),
+        )
+        for key, correction in corrections:
+            if correction is None:
+                continue
+            keyed_energies.append((key, Energy(method=key, totalenergy=[[correction]])))
+
+        for key, energy in keyed_energies:
             # > Add index at the end if multiple energies of the same type are present
-            index = 1
+            base_key = key
+            counter = 1
             while key in energy_dict:
-                key = f"{key}_{index}"
-                index += 1
+                key = f"{base_key}_{counter}"
+                counter += 1
             energy_dict[key] = energy
 
         return energy_dict
+
+    def get_vdw_correction(self, *, index: int = -1) -> VdwCorrection | None:
+        """
+        Easy access to the dispersion correction (in Eh).
+        Requires a method with a dispersion correction (e.g. D3, D4 or a composite method).
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the correction should be returned. The default -1 refers to
+            the final geometry. Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        -------
+        VdwCorrection | None
+            Returns the dispersion correction, which contains the correction itself and, if requested,
+            its atomic decomposition (ADLD), or None if the ORCA output does not contain it for the
+            requested index.
+        """
+        vdw_correction = self._safe_get("results_properties", "geometries", index, "vdw_correction")
+
+        if vdw_correction is not None:
+            vdw_correction = cast(VdwCorrection, vdw_correction)
+
+        return vdw_correction
+
+    def get_gcp_correction(self, *, index: int = -1) -> GcpEnergy | None:
+        """
+        Easy access to the geometrical counterpoise correction (in Eh).
+        Requires a method with a gCP correction (e.g. a composite method like r2SCAN-3c).
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the correction should be returned. The default -1 refers to
+            the final geometry. Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        -------
+        GcpEnergy | None
+            Returns the gCP correction, which also covers the gCP+basis set correction of HF-3c and the
+            SRB correction of B97-3c, or None if the ORCA output does not contain it for the requested
+            index.
+        """
+        gcp_correction = self._safe_get("results_properties", "geometries", index, "gcp_energy")
+
+        if gcp_correction is not None:
+            gcp_correction = cast(GcpEnergy, gcp_correction)
+
+        return gcp_correction
+
+    def get_rocis_energies(self, *, index: int = -1) -> RoCisEnergy | None:
+        """
+        Easy access to the energies (in Eh) of a restricted open-shell CI calculation.
+        Requires a ROCIS calculation.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the energies should be returned. The default -1 refers to
+            the final geometry. Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        -------
+        RoCisEnergy | None
+            Returns the ROCIS energies, which contain the total energy of the lowest root, the
+            reference and correlation energy and the energies of all roots, or None if the ORCA
+            output does not contain them for the requested index.
+        """
+        rocis_energies = self._safe_get("results_properties", "geometries", index, "rocis_energies")
+
+        if rocis_energies is not None:
+            rocis_energies = cast(RoCisEnergy, rocis_energies)
+
+        return rocis_energies
+
+    def get_cipsi_energies(self, *, index: int = -1) -> CiPsi | None:
+        """
+        Easy access to the energies (in Eh) of an iterative CI calculation.
+        Requires an ICE-CI/CIPSI calculation (`%ice` block).
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the energies should be returned. The default -1 refers to
+            the final geometry. Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        -------
+        CiPsi | None
+            Returns the CIPSI energies, which contain the final energy and the energies of all
+            roots, or None if the ORCA output does not contain them for the requested index.
+        """
+        cipsi_energies = self._safe_get("results_properties", "geometries", index, "cipsi_energies")
+
+        if cipsi_energies is not None:
+            cipsi_energies = cast(CiPsi, cipsi_energies)
+
+        return cipsi_energies
 
     def get_gradient(
         self, *, index: int = -1, fallback: bool = True
