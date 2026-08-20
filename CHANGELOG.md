@@ -37,6 +37,11 @@
 - `Structure.from_ase()` now falls back to the `charge` and `spin` entries of `Atoms.info` if ASE's per-atom `initial_charges` / `initial_magnetic_moments` arrays are unset (#273)
 - Add `Block` to allow for creation of arbitrary blocks. (#276)
 - Add functionality to fetch, search or remove a block using the ORCA name of the block. (#276)
+- `Output.get_energies()` now also reports the corrections that ORCA adds on top of the total energy of the electronic structure method: the dispersion correction (`VdW`) and the geometrical counterpoise correction (`gCP`). Adding them to the total energy of the highest-level method now yields `Output.get_final_energy()`. The gCP entry also covers the gCP+basis set correction of HF-3c and the SRB correction of B97-3c, which ORCA reports in the same field, and is modelled as the new `Geometries.gcp_energy` (#XXX).
+- Added `Output.get_vdw_correction()`, `Output.get_gcp_correction()`, `Output.get_rocis_energies()` and `Output.get_cipsi_energies()` to access the dispersion correction, the gCP correction and the energies of ROCIS and ICE-CI/CIPSI calculations, none of which are part of the energy list of the JSON output (#XXX).
+- Added the missing field `numofroots` to `RoCisEnergy` (#XXX).
+- Added the `Energy.energy` property as well as `reference_energy` and `correlation_energy` on the correlated energies, which return the energies as plain floats instead of the nested list holding a single element that ORCA writes, e.g. `get_energies()["SCF"].energy` instead of `get_energies()["SCF"].totalenergy[0][0]` (#XXX).
+- Added `EnergyType`, which enumerates and documents the known keys of the dictionary returned by `Output.get_energies()` and can be used for the lookup directly, e.g. `get_energies()[EnergyType.MDCI_SD_T]` (#XXX).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
@@ -46,6 +51,7 @@
 ### Deprecated
 ### Removed
 ### Fixed
+- The docstrings of `Mp2EnergyBase` and `AutoCiEnergy` documented `refenergy` and `correnergy` as plain floats, while ORCA writes them as a nested list holding a single element (#XXX).
 - The block methods of `Input` now raise a `TypeError` when passed something that is neither a block, a block class nor a block name, instead of failing with an `AttributeError`. `Input.add_blocks()` also rejects block classes, as only an instance carries the options of a block (#276).
 - `BlockABC` can no longer be instantiated, as it is abstract and models no ORCA block. `BlockABC.name` now reports that a block defines no ORCA block name instead of failing on the missing private attribute `_name` (#276).
 - Updated deprecated `typing` types to be compliant with Python >=3.11 guidelines (#216)
