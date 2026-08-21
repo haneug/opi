@@ -39,6 +39,8 @@
 - Add functionality to fetch, search or remove a block using the ORCA name of the block. (#276)
 - Added `GbwResults.get_structure()`, `GbwResults.from_gbw_file()`, and `Output.get_structure_from_gbw()` to obtain a `Structure` from a gbw file or gbw JSON (#280).
 - Added `Output.get_timings()` to access the timings of the calculation steps (#284).
+- Added error patterns for impossible multiplicities, overlapping atoms, missing basis sets, coupled-cluster calculations without virtuals or electron pairs, orbitals read in with `moinp` for another geometry, Open MPI failures, and any other error termination of an ORCA module (#XXX).
+- `Output.error_message()` and `Output.error_messages()` now also scan the `.err` file, where the messages of the MPI launcher and of the dynamic linker end up, and `Output.get_errfile()` returns its path (#XXX).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
@@ -55,6 +57,7 @@
 - Fixed `Structure.nelectrons` for structures containing ghost atoms (#268).
 - Fixed `_orca_environment()` which now makes changes to `os.environ` in-place without breaking any reference to that dict (#279).
 - Negative calculation timings occasionally reported by ORCA are now clamped to zero instead of raising a `ValidationError` (#284).
+- Fixed `Output.error_message()` reporting an Open MPI error for practically every ORCA run, successful ones included (#XXX).
 
 ## [2.0.0] - 2026-02-10
 
