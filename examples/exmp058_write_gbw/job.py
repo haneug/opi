@@ -19,6 +19,7 @@ from opi.core import Calculator
 from opi.input.simple_keywords import BasisSet, Method, Scf, Task
 from opi.input.structures import Structure
 from opi.output.core import Output
+from opi.output.models.json.gbw.gbw_results import GbwResults
 
 
 def run_exmp058(
@@ -65,7 +66,8 @@ def run_exmp058(
 
     # > Use the written gbw file as SCF guess of a second calculation
     calc_moread = Calculator(basename="job_moread", working_dir=working_dir)
-    calc_moread.structure =
+    # > Get the structure form the gbw file
+    calc_moread.structure = GbwResults.from_gbw_file(gbw_file).get_structure()
     calc_moread.input.add_simple_keywords(
         Scf.NOAUTOSTART, Scf.MOREAD, Method.HF, BasisSet.DEF2_SVP, Task.SP
     )
@@ -75,7 +77,7 @@ def run_exmp058(
     calc_moread.run()
 
     output_moread = calc_moread.get_output()
-    if not output_moread.terminated_normally():
+    if not output_moread.terminated_normally() and output.scf_converged():
         print(f"ORCA calculation failed, see output file: {output_moread.get_outfile()}")
         print(output_moread.error_message())
         sys.exit(1)
