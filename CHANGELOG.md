@@ -42,6 +42,7 @@
 - Added `GbwResults.to_gbw_file()` which writes a gbw file from the parsed data by converting it with `orca_2json <json-file> -gbw` (#XXX).
 - Added `JSONLoadable.to_json()` and `JSONLoadable.to_json_file()` which dump a results model back into JSON data or a JSON file (#XXX).
 - The fields of the gbw models now carry a `serialization_alias` holding ORCA's spelling of their key, so that a dumped gbw-JSON file can be read by `orca_2json` (#XXX).
+- Added the example `exmp058_write_gbw`, which writes a gbw file from the parsed output data and reuses it as SCF guess (#XXX).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)

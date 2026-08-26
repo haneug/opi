@@ -78,4 +78,5 @@ python3 job.py
 - exmp055_gfnff_fallback: Perform a GFN-FF optimization and retrieve the energy, gradient, and structure.
 - exmp056_optts_freq: Perform a GFN2-xTB transition-state optimisation and frequency calculation, retrieve imaginary frequencies.
 - exmp057_to_ase: Convert an optimized Structure into an ASE Atoms object
+- exmp058_write_gbw: Write a gbw file from parsed output data and reuse it as SCF guess
 
