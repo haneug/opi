@@ -37,6 +37,8 @@
 - `Structure.from_ase()` now falls back to the `charge` and `spin` entries of `Atoms.info` if ASE's per-atom `initial_charges` / `initial_magnetic_moments` arrays are unset (#273)
 - Add `Block` to allow for creation of arbitrary blocks. (#276)
 - Add functionality to fetch, search or remove a block using the ORCA name of the block. (#276)
+- Added `Output.get_vcd()` and the `VcdMode` class which return the calculated VCD spectrum from the ORCA output file (#XXX).
+- Added a tutorial notebook on the calculation of a VCD spectrum (#XXX).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
