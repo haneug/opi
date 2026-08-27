@@ -148,10 +148,6 @@ class GbwResults(JSONLoadable):
         Write a gbw file from the results by dumping them into a gbw-JSON file and converting that
         file with `orca_2json <json-file> -gbw`.
 
-        Note that ORCA only creates a *rudimentary* gbw file: it holds the geometry, the basis set
-        and the molecular orbitals, but information that is not part of the gbw-JSON file
-        (like ECPs) is lost. This also applies to gbw files created by ORCA itself.
-
         Parameters
         ----------
         gbw_file : Path | str

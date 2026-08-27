@@ -40,13 +40,9 @@
 - Added `Output.get_timings()` to access the timings of the calculation steps (#284).
 - Add merge logic for two blocks that model the same ORCA block, via `BlockABC.__or__()`: fields and arbitrary options of both blocks are combined, with the right-hand block taking precedence. Merging two blocks that model different ORCA blocks raises a `ValueError`. (#274)
 - Added `GbwResults.to_gbw_file()` which writes a gbw file from the parsed data by converting it with `orca_2json <json-file> -gbw` (#XXX).
-- Added `JSONLoadable.to_json()` and `JSONLoadable.to_json_file()` which dump a results model back into JSON data or a JSON file (#XXX).
-- The fields of the gbw models now carry a `serialization_alias` holding ORCA's spelling of their key, so that a dumped gbw-JSON file can be read by `orca_2json` (#XXX).
-- Added the example `exmp058_write_gbw`, which writes a gbw file from the parsed output data and reuses it as SCF guess (#XXX).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
-- `Runner.run_orca_2json()` now returns the `RunResult` of the `orca_2json` call instead of `None` (#XXX).
 - The JSON files redumped by `Output` (`do_redump_jsons`) now use the keys of the original ORCA JSON files instead of the field names of the models (#XXX).
 - Updated unit conversion constants to be consistent with ORCA (#269).
 - `Input` now stores blocks under the name of the ORCA block they model instead of under their `BlockABC` class. Hence `Input.blocks` and the dictionary returned by `Input.get_blocks()` are keyed by that name, e.g. `calc.input.get_blocks(BlockScf)["scf"]`. (#276)
