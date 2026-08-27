@@ -46,7 +46,7 @@
 - Updated unit conversion constants to be consistent with ORCA (#269).
 - `Input` now stores blocks under the name of the ORCA block they model instead of under their `BlockABC` class. Hence `Input.blocks` and the dictionary returned by `Input.get_blocks()` are keyed by that name, e.g. `calc.input.get_blocks(BlockScf)["scf"]`. (#276)
 - Change `Input.add_blocks()` to merge two block instances of same type by default, instead of being a no-op. (#274)
-- The JSON files redumped by `Output` (`do_redump_jsons`) now use the keys of the original ORCA JSON files instead of the field names of the models (#289).
+- The gbw-JSON files redumped by `Output` (`do_redump_jsons`) now use the keys of the original ORCA JSON files instead of the field names of the models (#289).
 
 ### Deprecated
 ### Removed

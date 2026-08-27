@@ -82,6 +82,10 @@ class JSONLoadable(GetItem, ABC):
         Dump object into JSON data. Fields are dumped under the key they were read from.
         This is the inverse operation of `from_json()`.
 
+        Only the gbw models declare ORCA's spelling of their keys (as `serialization_alias`), so
+        that a dumped gbw-JSON file can be read by `orca_2json`. The property models are dumped
+        under the lowercase keys that OPI reads them with, which ORCA does not accept.
+
         Parameters
         ----------
         exclude_none : bool, default: True
