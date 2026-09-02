@@ -40,6 +40,7 @@
 - Added `Output.get_timings()` to access the timings of the calculation steps (#284).
 - Added `Output.neb_converged()` and `mode="neb"` for `Properties` to check NEB convergence and read the MEP energies (#285)
 - Add merge logic for two blocks that model the same ORCA block, via `BlockABC.__or__()`: fields and arbitrary options of both blocks are combined, with the right-hand block taking precedence. Merging two blocks that model different ORCA blocks raises a `ValueError`. (#274)
+- Add merge logic for two `Input` objects, via `Input.__or__()`: simple keywords are concatenated without duplicates, keeping their order with those of the left-hand input first, blocks that model the same ORCA block are merged, arbitrary strings are concatenated, and `ncores`, `memory` and `moinp` are taken from the right-hand input if set. The right-hand input takes precedence throughout, blocks are copied into the result, and neither operand is modified. (#288)
 - Added `GbwResults.to_gbw_file()` which writes a gbw file from the parsed data by converting it with `orca_2json <json-file> -gbw` (#289).
 
 ### Changed
@@ -47,6 +48,8 @@
 - Updated unit conversion constants to be consistent with ORCA (#269).
 - `Input` now stores blocks under the name of the ORCA block they model instead of under their `BlockABC` class. Hence `Input.blocks` and the dictionary returned by `Input.get_blocks()` are keyed by that name, e.g. `calc.input.get_blocks(BlockScf)["scf"]`. (#276)
 - Change `Input.add_blocks()` to merge two block instances of same type by default, instead of being a no-op. (#274)
+- `Input.add_arbitrary_string()` now also accepts an `ArbitraryString` instance next to a plain `str`, so that an arbitrary string can be added together with the position it carries. (#288)
+- `SimpleKeyword` now compares equal case-insensitively, matching `SimpleKeyword.format_orca()`, which lowercases the keyword, and ORCA itself, which ignores the case. Hence keywords that only differ in case count as duplicates of each other in `Input.add_simple_keywords()`, `Input.remove_simple_keywords()`, `Input.has_simple_keyword()` and `Input.get_simple_keyword()`. (#288)
 - The gbw-JSON files redumped by `Output` (`do_redump_jsons`) now use the keys of the original ORCA JSON files instead of the field names of the models (#289).
 
 ### Deprecated

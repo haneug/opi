@@ -12,6 +12,10 @@ class SimpleKeyword:
     The public name is the name of the keyword that is used in the input file
     The keyword is the name of the keyword that is used in the ORCA input file
 
+    Two simple keywords compare equal if their keywords match case-insensitively, since
+    `format_orca()` lowercases the keyword and ORCA itself ignores the case. Hence, keywords
+    that only differ in case are duplicates of each other.
+
     Attributes
     ----------
     keyword: str
@@ -78,7 +82,7 @@ class SimpleKeyword:
         return self.keyword.lower()
 
     def __hash__(self) -> int:
-        return self.keyword.__hash__()
+        return self.keyword.lower().__hash__()
 
     def __str__(self) -> str:
         return self.format_orca()
@@ -86,4 +90,4 @@ class SimpleKeyword:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, SimpleKeyword):
             return False
-        return self.keyword == other.keyword
+        return self.keyword.lower() == other.keyword.lower()
