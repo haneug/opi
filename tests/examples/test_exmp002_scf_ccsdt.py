@@ -2,7 +2,6 @@ import pytest
 
 from examples.exmp002_scf_ccsdt.job import run_exmp002
 from opi.input.structures import Structure
-from opi.output.energy_type import EnergyType
 
 
 @pytest.mark.examples
@@ -20,4 +19,4 @@ def test_exmp002_scf(example_input_file, tmp_path) -> None:
     # Assert negative final energy
     assert output.get_final_energy() < 0
     # Assert correlation energy
-    assert output.get_energies()[EnergyType.MDCI_SD_T].correlation_energy < 0
+    assert output.get_energies()["MDCI(SD(T))"].correlation_energy < 0

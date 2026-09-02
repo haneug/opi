@@ -57,15 +57,17 @@ def test_get_energies_type_no_index(output_object_factory, task: str, key_name: 
     "task, expected_keys",
     [("opt", ("SCF", "VdW")), ("engrad", ("SCF", "VdW", "gCP"))],
 )
-def test_get_energies_corrections_sum_to_final_energy(
+def test_get_final_energy_components_sum_to_final_energy(
     output_object_factory, task: str, expected_keys: tuple[str, ...]
 ):
-    """Test that `Output.get_energies()` reports the corrections and that all contributions
-    add up to the final energy."""
+    """Test that `Output.get_final_energy_components()` reports the corrections on top of the
+    energies of `Output.get_energies()` and that all contributions add up to the final energy."""
     output_object = output_object_factory(task)
-    energies = output_object.get_energies()
-    assert set(energies) == set(expected_keys)
-    total = sum(energies[key].totalenergy[0][0] for key in expected_keys)
+    energy_components = output_object.get_final_energy_components()
+    assert set(energy_components) == set(expected_keys)
+    # > the corrections are not part of the energy list of the JSON output
+    assert set(output_object.get_energies()) == {"SCF"}
+    total = sum(energy_components[key].energy for key in expected_keys)
     assert total == pytest.approx(output_object.get_final_energy())
 
 
@@ -99,15 +101,15 @@ def test_get_cipsi_energies(output_object_factory, task: str):
 @pytest.mark.parametrize("task", ["engrad"])
 def test_get_corrections(output_object_factory, task: str):
     """Test that the correction getters return the models behind the `VdW` and `gCP` entries of
-    `Output.get_energies()`."""
+    `Output.get_final_energy_components()`."""
     output_object = output_object_factory(task)
-    energies = output_object.get_energies()
+    energy_components = output_object.get_final_energy_components()
     vdw_correction = output_object.get_vdw_correction()
     gcp_correction = output_object.get_gcp_correction()
     assert isinstance(vdw_correction, VdwCorrection)
     assert isinstance(gcp_correction, GcpEnergy)
-    assert vdw_correction.vdw == energies["VdW"].totalenergy[0][0]
-    assert gcp_correction.gcp_energy == energies["gCP"].totalenergy[0][0]
+    assert vdw_correction.vdw == energy_components["VdW"].energy
+    assert gcp_correction.gcp_energy == energy_components["gCP"].energy
 
 
 @pytest.mark.unit
@@ -127,7 +129,7 @@ def test_get_energies_outside_energy_list_nonexistent(empty_output_object: Outpu
 )
 def test_energy_scalar_accessor(output_object_factory, task: str, key_name: str):
     """Test that `Energy.energy` returns the total energy of the entry as a plain float."""
-    energy = output_object_factory(task).get_energies()[key_name]
+    energy = output_object_factory(task).get_final_energy_components()[key_name]
     assert energy.energy == energy.totalenergy[0][0]
 
 
@@ -153,9 +155,7 @@ def test_energy_scalar_accessor_without_energy():
 
 @pytest.mark.unit
 @pytest.mark.output
-@pytest.mark.parametrize(
-    "task, energy_type", [("engrad", EnergyType.SCF), ("engrad", EnergyType.GCP)]
-)
+@pytest.mark.parametrize("task, energy_type", [("engrad", EnergyType.SCF), ("mp2", EnergyType.MP2)])
 def test_energy_type_usable_as_key(output_object_factory, task: str, energy_type: EnergyType):
     """Test that the `EnergyType` members can be used to look up energies directly."""
     energies = output_object_factory(task).get_energies()

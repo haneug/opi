@@ -3,13 +3,16 @@ from opi.models.string_enum import StringEnum
 
 class EnergyType(StringEnum):
     """
-    Enumeration of the energy types that `Output.get_energies()` is known to return.
+    Enumeration of the energy types that `Output.get_energies()` and
+    `Output.get_final_energy_components()` are known to return.
 
-    The members are the keys of the dictionary returned by `Output.get_energies()`, so they can be
-    used for the lookup directly, e.g. `output.get_energies()[EnergyType.MDCI_SD_T]`.
+    ORCA names the energy types itself, so those dictionaries are keyed by plain strings and looking
+    an energy up by its name is the natural way to do it. This enumeration documents the known
+    names; as its members are plain strings, they can be used for the lookup as well, e.g.
+    `output.get_energies()[EnergyType.MDCI_SD_T]`.
 
-    ORCA names the energy types itself, hence this enumeration is not exhaustive: the dictionary is
-    keyed by plain strings and a calculation may well produce a type that is not listed here.
+    The enumeration is not exhaustive: a calculation may well produce an energy type that is not
+    listed here.
     """
 
     UNKNOWN = "Unknown"
@@ -33,6 +36,8 @@ class EnergyType(StringEnum):
     TDA_CIS = "TDA/CIS"
     """TDA-TD-DFT or CIS energy."""
     VDW = "VdW"
-    """Dispersion correction, see `Output.get_vdw_correction()`."""
+    """Dispersion correction, reported by `Output.get_final_energy_components()`, see also
+    `Output.get_vdw_correction()`."""
     GCP = "gCP"
-    """Geometrical counterpoise correction, see `Output.get_gcp_correction()`."""
+    """Geometrical counterpoise correction, reported by `Output.get_final_energy_components()`, see
+    also `Output.get_gcp_correction()`."""

@@ -42,6 +42,8 @@ from opi.output.models.base.strict_types import (
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.gbw.properties.mo import MO
 from opi.output.models.json.property.properties.ci_psi import CiPsi
+from opi.output.models.json.property.properties.calc_time import CalculationTiming
+from opi.output.models.json.property.properties.ci_psi import CiPsi
 from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
 from opi.output.models.json.property.properties.energy import Energy
 from opi.output.models.json.property.properties.energy_list import EnergyList
@@ -1383,27 +1385,23 @@ class Output:
 
         Notes
         -----
-        The keys are the names that ORCA gives the energy types. `EnergyType` enumerates the known
-        ones and documents what they mean; since its members are plain strings, they can be used
-        for the lookup directly, e.g. `output.get_energies()[EnergyType.MDCI_SD_T]`.
+        Common keys include:
+            - **Unknown**     : No information about the energy is provided.
+            - **SCF**         : SCF energy from HF, DFT, or SQM methods.
+            - **MDCI(SD)**    : Typically the (DLPNO-)CCSD energy.
+            - **MDCI(SD(T))** : Typically the (DLPNO-)CCSD(T) energy.
+            - **CASSCF**      : CASSCF energy.
+            - **MP2**         : MP2 energy.
+            - **TDA/CIS**     : TDA-TD-DFT or CIS energy.
 
-        ORCA reports the corrections that it adds on top of the total energy of the electronic
-        structure method outside of the energy list of the JSON output. They are included as well:
-            - **VdW** (`EnergyType.VDW`): Dispersion correction (e.g. D3 or D4).
-            - **gCP** (`EnergyType.GCP`): Geometrical counterpoise correction. ORCA reports the
-              plain gCP correction (e.g. r2SCAN-3c), the combined gCP+basis set correction
-              (e.g. HF-3c) and the short-range basis (SRB) correction (e.g. B97-3c) in the same
-              field, so all of them show up under this key.
+        The keys are the names that ORCA gives the energy types, so plain strings are the natural
+        way to look an energy up. For reference, `EnergyType` enumerates and documents the known
+        names; as its members are plain strings, they can be used for the lookup as well, e.g.
+        `output.get_energies()[EnergyType.MDCI_SD_T]`.
 
-        The corrections are wrapped into `Energy` objects carrying only the method and the energy
-        itself, so their value is accessed the same way as for the other entries, i.e. via the
-        `Energy.energy` property. Adding them to the total energy of the highest-level method
-        present yields `Output.get_final_energy()`. Everything else that ORCA reports about them is
-        available from `Output.get_vdw_correction()` and `Output.get_gcp_correction()`.
-
-        Not every energy that ORCA can report shows up here: methods whose results are not modelled
-        as an `Energy` have their own getters, namely `Output.get_rocis_energies()` and
-        `Output.get_cipsi_energies()`.
+        Only the energies of ORCA's energy list are reported here. The corrections that ORCA adds on
+        top of them, e.g. the dispersion correction, are included by
+        `Output.get_final_energy_components()`.
         """
 
         # > Energy dict to populate & return
@@ -1417,10 +1415,66 @@ class Output:
         else:
             return None
 
-        # > Pair every energy with the key it is to be stored under
-        keyed_energies: list[tuple[str, Energy]] = [
-            (energy.method if energy.method else "Unknown", energy) for energy in energy_list
-        ]
+        for energy in energy_list:
+            base_key = energy.method if energy.method else "Unknown"
+            key = base_key
+            # > Add index at the end if multiple energies of the same type are present
+            counter = 1
+            while key in energy_dict:
+                key = f"{base_key}_{counter}"
+                counter += 1
+            energy_dict[key] = energy
+
+        return energy_dict
+
+    def get_final_energy_components(self, *, index: int = -1) -> dict[str, Energy] | None:
+        """
+        Return a dictionary with all energy components that contribute to the final energy of the
+        geometry at a given index, i.e. the energies of `Output.get_energies()` plus the corrections
+        that ORCA adds on top of the total energy of the electronic structure method.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the energy components should be returned. The default -1 refers
+            to the final geometry. Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        -------
+        dict[str, Energy] | None
+            Dictionary where the keys identify the energy component, following the conventions of
+            `Output.get_energies()`. None if the output contains no energy component for the requested index.
+
+        Notes
+        -----
+        On top of the keys of `Output.get_energies()`, the corrections that ORCA reports outside of
+        its energy list are included:
+            - **VdW** : Dispersion correction (e.g. D3 or D4).
+            - **gCP** : Geometrical counterpoise correction. ORCA reports the plain gCP correction
+              (e.g. r2SCAN-3c), the combined gCP+basis set correction (e.g. HF-3c) and the
+              short-range basis (SRB) correction (e.g. B97-3c) in the same field, so all of them
+              show up under this key.
+
+        The corrections are wrapped into `Energy` objects carrying only the method and the energy
+        itself, so their value is accessed the same way as for the other entries, i.e. via the
+        `Energy.energy` property. Everything else that ORCA reports about them is available from
+        `Output.get_vdw_correction()` and `Output.get_gcp_correction()`.
+
+        Adding the corrections to the total energy of the highest-level method present yields
+        `Output.get_final_energy()`. Mind that the energies of the lower-level methods are listed as
+        well (e.g. `SCF` next to `MP2`), hence summing up all entries generally does not give the
+        final energy. For excited-state methods like EOM-CCSD, ORCA reports the first excited
+        state as the final energy, no matter how many roots were calculated, while the components
+        refer to the ground state, so they add up to the ground state and the excitation energy of
+        the first root is missing from them.
+
+        Not every energy that ORCA can report shows up here: methods whose results are not modelled
+        as an `Energy` have their own getters, namely `Output.get_rocis_energies()` and
+        `Output.get_cipsi_energies()`.
+        """
+
+        # > Energies of ORCA's energy list, the corrections are added on top of them
+        energy_components: dict[str, Energy] = self.get_energies(index=index) or {}
 
         # > Add the corrections that ORCA reports outside of the energy list. Only the correction
         # > itself is carried over, the full models are returned by their own getters.
@@ -1433,18 +1487,9 @@ class Output:
         for key, correction in corrections:
             if correction is None:
                 continue
-            keyed_energies.append((key, Energy(method=key, totalenergy=[[correction]])))
+            energy_components[key] = Energy(method=key, totalenergy=[[correction]])
 
-        for key, energy in keyed_energies:
-            # > Add index at the end if multiple energies of the same type are present
-            base_key = key
-            counter = 1
-            while key in energy_dict:
-                key = f"{base_key}_{counter}"
-                counter += 1
-            energy_dict[key] = energy
-
-        return energy_dict
+        return energy_components or None
 
     def get_vdw_correction(self, *, index: int = -1) -> VdwCorrection | None:
         """
