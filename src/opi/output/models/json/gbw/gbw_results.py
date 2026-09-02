@@ -1,4 +1,6 @@
+import shutil
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from pydantic import Field
 
@@ -27,9 +29,9 @@ class GbwResults(JSONLoadable):
         Contains information about the molecule
     """
 
-    orca_header: OrcaHeader | None = Field(alias="orca header")
-    citations: list[Cite] | None = None
-    molecule: Molecule | None = None
+    orca_header: OrcaHeader | None = Field(alias="orca header", serialization_alias="ORCA Header")
+    citations: list[Cite] | None = Field(default=None, serialization_alias="Citations")
+    molecule: Molecule | None = Field(default=None, serialization_alias="Molecule")
 
     class Configuration:
         allow_population_by_field_name = True
@@ -140,3 +142,91 @@ class GbwResults(JSONLoadable):
             structure.origin = molecule.basename
 
         return structure
+
+    def to_gbw_file(self, gbw_file: Path | str, /, *, runner: Runner | None = None) -> Path:
+        """
+        Write a gbw file from the results by dumping them into a gbw-JSON file and converting that
+        file with `orca_2json <json-file> -gbw`.
+
+        Parameters
+        ----------
+        gbw_file : Path | str
+            Path to the gbw file to be written. An existing file is overwritten.
+        runner : Runner | None, default: None
+            Runner used to execute `orca_2json`. By default, a new `Runner` is created.
+
+        Returns
+        -------
+        Path
+            Path to the written gbw file.
+
+        Raises
+        ------
+        ValueError
+            If the results lack data that is required to create a gbw file.
+        IsADirectoryError
+            If `gbw_file` points to a folder.
+        FileNotFoundError
+            If the parent folder of `gbw_file` does not exist.
+        RuntimeError
+            If `orca_2json` did not create a gbw file.
+        """
+        self._check_gbw_writable()
+
+        gbw_file = Path(gbw_file)
+        if gbw_file.is_dir():
+            raise IsADirectoryError(f"Path of gbw file is a folder: {gbw_file}")
+        if not gbw_file.parent.is_dir():
+            raise FileNotFoundError(f"Folder of gbw file does not exist: {gbw_file.parent}")
+
+        if runner is None:
+            runner = Runner()
+
+        # > `orca_2json` determines the name of the gbw file from the name of the JSON file, hence
+        # > the JSON file is written into a temporary folder to not overwrite any existing files.
+        # > That folder is created next to the gbw file, so that `orca_2json` runs in the folder of
+        # > the gbw file and both files stay on the same file system.
+        with TemporaryDirectory(dir=gbw_file.parent) as tmpdir:
+            tmp_dir = Path(tmpdir)
+            json_file = self.to_json_file(tmp_dir / f"{gbw_file.stem}.json")
+            # > Passing only the name of the JSON file, as ORCA binaries are run in the folder of
+            # > the files they work on.
+            result = runner.run_orca_2json([json_file.name, "-gbw"], working_dir=tmp_dir)
+
+            # > `orca_2json` appends "_copy" to the stem of the JSON file
+            tmp_gbw_file = json_file.with_name(f"{json_file.stem}_copy.gbw")
+            if not result.returncode_ok() or not tmp_gbw_file.is_file():
+                raise RuntimeError(
+                    f"orca_2json failed to create a gbw file from {gbw_file.stem}.json"
+                )
+
+            return Path(shutil.move(tmp_gbw_file, gbw_file))
+
+    def _check_gbw_writable(self) -> None:
+        """
+        Check that all data required by `orca_2json` to create a gbw file is present.
+        Missing data makes `orca_2json` fail or even crash, so it is checked beforehand.
+
+        Raises
+        ------
+        ValueError
+            If required data is missing.
+        """
+        molecule = self.molecule
+        if molecule is None:
+            raise ValueError("Cannot write gbw file: no molecule present")
+        if molecule.hftyp is None:
+            raise ValueError("Cannot write gbw file: HF type of the molecule is missing")
+
+        if not molecule.atoms:
+            raise ValueError("Cannot write gbw file: no atoms present")
+        if any(atom.basis is None for atom in molecule.atoms):
+            raise ValueError("Cannot write gbw file: basis set of at least one atom is missing")
+
+        molecular_orbitals = molecule.molecularorbitals
+        if molecular_orbitals is None or not molecular_orbitals.mos:
+            raise ValueError("Cannot write gbw file: no molecular orbitals present")
+        if any(mo.mocoefficients is None for mo in molecular_orbitals.mos):
+            raise ValueError(
+                "Cannot write gbw file: MO coefficients of at least one molecular orbital are missing"
+            )

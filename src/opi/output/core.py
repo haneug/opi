@@ -412,27 +412,13 @@ class Output:
         assert self.results_gbw
         for i, gbw_json_file in enumerate(self.gbw_json_files):
             redumped_gbw_json_file = gbw_json_file.with_suffix(".interface.json")
-            self._dump_json(self.results_gbw[i], redumped_gbw_json_file)
+            # > Keeping the empty fields, as they show what could not be parsed
+            self.results_gbw[i].to_json_file(redumped_gbw_json_file, exclude_none=False)
 
         assert self.property_json_file
         assert self.results_properties
         redumped_property_json_file = self.property_json_file.with_suffix(".interface.json")
-        self._dump_json(self.results_properties, redumped_property_json_file)
-
-    def _dump_json(self, result: GbwResults | PropertyResults, json_file: Path, /) -> None:
-        """
-        Dump `GbwResults` or `PropertyResults` to a JSON file.
-
-        Parameters
-        ----------
-        result : GbwResults | PropertyResults
-            Results to be dumped.
-        json_file : Path
-            Path to JSON file to be written.
-        """
-
-        json_string: str = result.model_dump_json(indent=2)
-        json_file.write_text(json_string)
+        self.results_properties.to_json_file(redumped_property_json_file, exclude_none=False)
 
     def collect_gbw_json_files(self) -> None:
         """
