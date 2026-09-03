@@ -41,7 +41,6 @@ from opi.output.models.base.strict_types import (
 )
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.gbw.properties.mo import MO
-from opi.output.models.json.property.properties.ci_psi import CiPsi
 from opi.output.models.json.property.properties.calc_time import CalculationTiming
 from opi.output.models.json.property.properties.ci_psi import CiPsi
 from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
